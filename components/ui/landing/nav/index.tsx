@@ -6,16 +6,26 @@ const Navbar = () => {
     <nav className='fixed top-0 inset-x-0 z-50 transition-all duration-300 backdrop-blur-sm border-b border-white/5 bg-[#050509]/50'>
         <div className='max-w-6xl mx-auto px-6 h-16 flex items-center justify-between'>
 
-            <Link href={"/"} className=' flex items-center gap-2'>
-            <div className='w-5 h-5 bg-white rounded-sm flex items-center justify-between'>
-                <div className='w-2.5 h-2.5 bg-black rounded-[1px]'></div>
-            </div>
+            <Link href={"/"} className='flex items-center gap-2'>
+  <div className='w-6 h-6 bg-white/10 rounded-md border border-white/20 flex items-center justify-center'>
+    <svg 
+      viewBox="0 0 24 24" 
+      className="w-4 h-4 text-white" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="3" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    >
+      <polyline points="4 17 10 11 4 5"></polyline>
+      <line x1="12" y1="19" x2="20" y2="19"></line>
+    </svg>
+  </div>
 
-            <span className='text-base font-semibold font-inter tracking-tight text-white/90'>
-             Vilyo customer Support
-            </span>
-            
-            </Link>
+  <span className='text-base font-semibold font-inter tracking-tight text-white/90'>
+    Vilyo Customer Support
+  </span>
+</Link>
 
             <div className='hidden md:flex items-center gap-8 text-sm font-light text-zinc-400'>
 
