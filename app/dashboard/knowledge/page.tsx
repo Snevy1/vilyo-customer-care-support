@@ -1,6 +1,7 @@
 "use client";
 
 
+import { KnowledgeSource } from '@/@types/types';
 import AddKnowledgeModal from '@/components/dashboard/knowledge/addKnowledgeModal';
 import QuickActions from '@/components/dashboard/knowledge/quickActions';
 import { Button } from '@/components/ui/button'
@@ -10,6 +11,12 @@ import React, { useState } from 'react'
 const page = () => {
     const [defaultTab, setDefaultTab] = useState("website");
     const [isAddOpen, setIsAddOpen] = useState(false);
+    const [knowledgeStoringLoader, setKnowledgeStoringLoader] = useState(false);
+
+    const [knowledgeSourcesLoader, setknowledgeSourcesLoader] = useState(true);
+    const [knowledgeSources, setKnowledgeSources] = useState<KnowledgeSource[]>([])
+
+
 
 
     const openModal = (tab:string)=>{
@@ -21,6 +28,59 @@ const page = () => {
     };
 
 
+
+const handleImportSource = async (data:any)=>{
+
+    setKnowledgeStoringLoader(true);
+
+    try {
+        let response;
+        if(data.type === "upload" && data.file){
+
+            const formData = new FormData;
+
+                formData.append("type", "upload");
+                formData.append("file", data.file);
+
+                response = await fetch("/api/knowledge/store", {
+                    method: "POST",
+                    body: formData
+                });
+
+
+
+                if(!response.ok) throw new Error("Failed to store source");
+
+                const res = await fetch("/api/knowledge/fetch");
+
+                const newData = await res.json();
+
+                setKnowledgeSources(newData.sources);
+                setIsAddOpen(false)
+
+
+
+        }else{
+            response = await fetch("/api/knowledge/store",{
+               method: "POST" ,
+               headers: { "Content-Type": "application/json"},
+               body: JSON.stringify(data)
+
+            });
+        }
+        
+    } catch (error) {
+
+        console.error(error);
+        setIsAddOpen(false);
+
+
+        
+    }finally{
+        setKnowledgeStoringLoader(false);
+    }
+
+}
 
 
 
@@ -57,7 +117,17 @@ const page = () => {
 
         <QuickActions onOpenModal={openModal} />
 
-         <AddKnowledgeModal />
+         <AddKnowledgeModal 
+         isOpen={isAddOpen}
+         setIsOpen={setIsAddOpen}
+         defaultTab={defaultTab}
+         setDefaultTab={setDefaultTab}
+         onImport={handleImportSource}
+         isLoading={knowledgeStoringLoader}
+         existingSources={knowledgeSources}
+         
+         
+         />
     </div>
   )
 }
