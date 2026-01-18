@@ -15,6 +15,13 @@
       "when": 1768246062342,
       "tag": "0001_ordinary_stature",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1768719916069,
+      "tag": "0002_dapper_robbie_robertson",
+      "breakpoints": true
     }
   ]
 }

@@ -1,9 +1,12 @@
+import { db } from "@/db/client";
+import { knowledge_source } from "@/db/schema";
 import { isAuthorized } from "@/lib/isAuthorized";
 import { summarizeMarkdown } from "@/lib/openAI";
 import { error } from "console";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req:NextRequest){
+    
     try {
 
         const user = await isAuthorized();
@@ -46,6 +49,28 @@ export async function POST(req:NextRequest){
 
                formattedContent = markdown;
 
+               await db.insert(knowledge_source).values({
+                user_email: user.email,
+                type: "upload",
+                name: file.name,
+                status: "active",
+                content: formattedContent,
+                meta_data: JSON.stringify({
+                    fileNamme: file.name,
+                    fileSize: file.size,
+                    rowCount: lines.length -1,
+                    headers: headers,
+                })
+
+               });
+
+               return NextResponse.json(
+                {message: "CSV file uploaded successfully"},
+                {status: 200}
+            
+            );
+            
+
 
 
         }
@@ -81,10 +106,35 @@ export async function POST(req:NextRequest){
 
 
             }
-            console.log(html, "markdown");
+            
 
             const markdown = await summarizeMarkdown(html);
             
+             await db.insert(knowledge_source).values({
+                user_email: user.email,
+                type: "website",
+                name: body.url,
+                status: "active",
+                source_url: body.url,
+                content: markdown
+             })
+            
+
+        } else if (type === "text"){
+            let content = body.content;
+
+            if(body.content.length > 500){
+                const markdown = await summarizeMarkdown(body.content)
+                content = markdown;
+            };
+
+            await db.insert(knowledge_source).values({
+                user_email: user.email,
+                type: "text",
+                name: body.title,
+                status: "active",
+                content: content
+            });
 
         }
 

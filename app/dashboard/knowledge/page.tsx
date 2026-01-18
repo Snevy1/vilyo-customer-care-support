@@ -3,10 +3,12 @@
 
 import { KnowledgeSource } from '@/@types/types';
 import AddKnowledgeModal from '@/components/dashboard/knowledge/addKnowledgeModal';
+import KnowledgeTable from '@/components/dashboard/knowledge/knowledgeTable';
 import QuickActions from '@/components/dashboard/knowledge/quickActions';
+import SourceDetailsSheet from '@/components/dashboard/knowledge/sourceDetailsSheet';
 import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 
 const page = () => {
     const [defaultTab, setDefaultTab] = useState("website");
@@ -14,7 +16,10 @@ const page = () => {
     const [knowledgeStoringLoader, setKnowledgeStoringLoader] = useState(false);
 
     const [knowledgeSourcesLoader, setknowledgeSourcesLoader] = useState(true);
-    const [knowledgeSources, setKnowledgeSources] = useState<KnowledgeSource[]>([])
+    const [knowledgeSources, setKnowledgeSources] = useState<KnowledgeSource[]>([]);
+
+    const [selectedSource,setSelectedSource ] = useState<KnowledgeSource | null>();
+    const [isSheetOpen, setIsSheetOpen] = useState(false);
 
 
 
@@ -26,6 +31,19 @@ const page = () => {
 
 
     };
+
+
+ useEffect(()=>{
+   const fetchKnowledgeSources = async ()=>{
+    const res = await fetch("/api/knowledge/fetch");
+    const data = await res.json();
+
+    setKnowledgeSources(data.sources);
+    setknowledgeSourcesLoader(false)
+   };
+   fetchKnowledgeSources();
+
+   },[]) 
 
 
 
@@ -83,6 +101,13 @@ const handleImportSource = async (data:any)=>{
 }
 
 
+const handleSourceClick = (source:KnowledgeSource)=>{
+    setSelectedSource(source);
+    setIsSheetOpen(true);
+}
+
+
+
 
 
   return (
@@ -117,6 +142,15 @@ const handleImportSource = async (data:any)=>{
 
         <QuickActions onOpenModal={openModal} />
 
+        <KnowledgeTable
+        sources={knowledgeSources}
+        onSourceClick={handleSourceClick}
+        isLoading={knowledgeSourcesLoader}
+
+        
+        
+        />
+
          <AddKnowledgeModal 
          isOpen={isAddOpen}
          setIsOpen={setIsAddOpen}
@@ -125,6 +159,14 @@ const handleImportSource = async (data:any)=>{
          onImport={handleImportSource}
          isLoading={knowledgeStoringLoader}
          existingSources={knowledgeSources}
+         
+         
+         />
+
+         <SourceDetailsSheet 
+          isOpen={isSheetOpen}
+          setIsOpen={setIsSheetOpen}
+          selectedSource={selectedSource}
          
          
          />
