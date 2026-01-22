@@ -1,8 +1,10 @@
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { Value } from '@radix-ui/react-select';
-import { Palette } from 'lucide-react';
+import { Palette, Save } from 'lucide-react';
 import React from 'react';
 
 interface  AppearanceConfigProps {
@@ -33,6 +35,9 @@ const AppearanceConfig = ({primaryColor,
     hasChanges
 
 }:AppearanceConfigProps) => {
+
+    
+   
   return (
     <Card
     className='border-white/5 bg-[#0a0a0e]'
@@ -80,12 +85,51 @@ const AppearanceConfig = ({primaryColor,
                         ))
                     }
 
-                    <div>
+                    <div className='relative w-6 h-6 rounded-full overflow-hidden border-2 border-white/70 ml-2'>
+
+                     <input
+                     type='color'
+                     value={primaryColor}
+                     onChange={(e)=>setPrimaryColor(e.target.value)}
+                     className='absolute -top-2 -left-2 w-10 h-10 p-0 border-0 cursor-pointer'
+                     
+                     
+                     />
                         
                     </div>
 
                 </div>
             </div>
+
+            <div className='space-y-3'>
+                <label className='text-zinc-300'>Welcome Message</label>
+               <Textarea
+               value={welcomeMessage}
+               onChange={(e)=>setWelcomeMessage(e.target.value)}
+               placeholder='Hi! How can I help you?'
+               className='bg-white/2 border-white/10 text-white resize-none'
+               
+               
+               />
+            </div>
+            {hasChanges && (
+                <Button
+                onClick={handleSave}
+                disabled={isSaving}
+                className='w-full bg-white text-black hover:bg-zinc-200'
+                
+                >
+                    {isSaving ? (
+                        "Saving..."
+                    ):(
+                        <>
+                        {" "}
+                        <Save className='w-4 h-4 mr-2' /> Save Changes{" "}
+                        </>
+                    )}
+
+                </Button>
+            )}
 
         </CardContent>
 

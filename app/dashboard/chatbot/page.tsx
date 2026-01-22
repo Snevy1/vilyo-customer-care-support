@@ -3,7 +3,9 @@
 import { Section } from '@/@types/types';
 import AppearanceConfig from '@/components/dashboard/chatbot/appearanceConfig';
 import ChatSimulator from '@/components/dashboard/chatbot/chatSimulator'
+import EmbedCodeConfig from '@/components/dashboard/chatbot/embedCodeConfig';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { knowledge_source } from '@/db/schema';
 import React, { useEffect, useRef, useState } from 'react';
 
 
@@ -38,17 +40,19 @@ const ChatbotPage = () => {
         const metaRes = await fetch("/api/chatbot/metadata/fetch");
         const metaData = await metaRes.json();
 
+        
+
         setMetadata(metaData);
 
         if(metaData){
-          setPrimaryColor(metadata?.color || "#4f46e5");
+          setPrimaryColor(metaData?.color || "#4f46e5");
           setWelcomeMessage(
-            metadata?.welcome_message || "Hi! How can I help you?"
+            metaData?.welcome_message || "Hi! How can I help you?"
           );
           setMessages([
             {
               role: "assistant",
-              content: metadata?.welcome_message || "Hi! How can I help you?",
+              content: metaData?.welcome_message || "Hi! How can I help you?",
               isWelcome: true,
               section: null,
             }
@@ -83,7 +87,6 @@ const ChatbotPage = () => {
 
 
 
-
   useEffect(()=>{
     if(scrollViewportRef.current){
       scrollViewportRef.current.scrollIntoView({behavior: 'smooth'})
@@ -92,6 +95,42 @@ const ChatbotPage = () => {
 
 
   const handleSend = async()=>{
+
+    if(!input.trim()) return;
+
+    const currentSection = sections.find((s)=> s.name === activeSection);
+
+    const sourceIds = currentSection?.source_ids || [];
+
+    const userMsg = {role: "user", content:input, section:activeSection}
+
+    setMessages((prev)=> [...prev, userMsg]);
+
+    setInput("");
+    setIsTyping(true);
+
+    const res = await fetch('/api/chat/test', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        messages: [...messages, userMsg],
+        knowledge_source_ids: sourceIds
+      })
+
+    });
+
+
+    if(res.ok){
+      const data = await res.json();
+      setMessages((prev)=>[
+        ...prev,
+        {role: "assistant", content:data.response, section:null},
+
+      ]);
+
+      setIsTyping(false);
+    }
+    
 
 
   }
@@ -142,9 +181,56 @@ const ChatbotPage = () => {
 
   const handleSave = async()=>{
 
+    setIsSaving(true);
+    try {
+      const res = await fetch("/api/chatbot/metadata/update",{
+        method: "PUT",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          color: primaryColor,
+          welcome_message: welcomeMessage
+        })
+      });
+
+      if(res.ok){
+        const updated = await res.json();
+        setMetadata(updated)
+      }else{
+        console.error("Failed to save changes")
+      }
+      
+    } catch (error) {
+      console.error("Failed to save:", error);
+      
+    }finally{
+      setIsSaving(false)
+    }
+
   }
 
-  const hasChanges = metadata ? (primaryColor !== (metadata.color || "#4f46e5")|| welcomeMessage !== (metadata.welcome_message || "Hi, How can I help you?")) : false;
+  // CORRECT - compares against saved metadata
+
+
+const hasChanges = metadata ? 
+  primaryColor !== (metadata.color || "#4f46e5") || 
+  welcomeMessage !== (metadata.welcome_message || "Hi, How can I help you?")
+  : false;
+
+ 
+  
+  
+
+if(loading){
+  return (
+    <div className='p-8 text-zinc-500'>Loading chatbot configuration...</div>
+  )
+}
+
+
+
+
+  
+
 
   return (
     <div className='p-6 md:p-8 space-y-8 max-w-400 mx-auto animate-in  fade-in duration-500 h-[calc(100vh-64px)] overflow-hidden flex flex-col'>
@@ -182,8 +268,7 @@ const ChatbotPage = () => {
 
         </div>
 
-        <div>
-          <div className='lg:col-span-5 h-full min-h-0 overflow-hidden flex flex-col'>
+      <div className='lg:col-span-5 h-full min-h-0 overflow-hidden flex flex-col'>
             <ScrollArea className='h-full pr-4'>
 
               <div className='space-y-6 pb-8'>
@@ -191,11 +276,14 @@ const ChatbotPage = () => {
                 primaryColor={primaryColor}
                 setPrimaryColor={setPrimaryColor}
                 welcomeMessage={welcomeMessage}
-                  setWelcomeMessage ={setWelcomeMessage}
+                setWelcomeMessage ={setWelcomeMessage}
                 handleSave={handleSave}
                 isSaving={isSaving}
                 hasChanges={hasChanges}
                 
+                />
+                <EmbedCodeConfig
+                 chatbotId={metadata?.id}
                 />
 
               </div>
@@ -203,8 +291,9 @@ const ChatbotPage = () => {
             </ScrollArea>
 
           </div>
+          
 
-        </div>
+      
 
       </div>
 
