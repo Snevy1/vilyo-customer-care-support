@@ -9,7 +9,7 @@ const EmbedCodeConfig = ({chatbotId}:{chatbotId:string | undefined}) => {
 
    const handleCopyCode = () =>{
     setCopied(true);
-    navigator.clipboard.writeText(`<script src="http://localhost:3000/widget.js" data-id="${chatbotId}" defer></script>`);
+    navigator.clipboard.writeText(`<script src="${process.env.NEXT_PUBLIC_WEBSITE_URI}/widget.js" data-id="${chatbotId}" defer></script>`);
     setTimeout(()=>setCopied(false), 2000)
    }
   return (
@@ -30,7 +30,7 @@ const EmbedCodeConfig = ({chatbotId}:{chatbotId:string | undefined}) => {
                 <div className='bg-[#050509] border border-white/10 rounded-lg p-3 overflow-hidden'>
                   <code className='text-[10px] font-mono block overflow-x-auto  text-white'>
                     {
-                        `<script src="http://localhost:3000/widget.js" \n data-id="${chatbotId || "..." }" \n defer>\n</script>`
+                        `<script src="${process.env.NEXT_PUBLIC_WEBSITE_URI}/widget.js" \n data-id="${chatbotId || "..." }" \n defer>\n</script>`
                     }
 
                   </code>

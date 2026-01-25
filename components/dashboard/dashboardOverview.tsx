@@ -361,7 +361,7 @@ const setupSteps = [
                             
                             <code className='text-[10px] font-mono text-zinc-400 block overflow-x-auto'>
                     {
-                        `<script src="http://localhost:3000/widget.js" \n data-id="${data?.botId || "..." }" \n defer>\n</script>`
+                        `<script src="${origin}/widget.js" \n data-id="${data?.botId || "..." }" \n defer>\n</script>`
                     }
 
                   </code>

@@ -69,7 +69,7 @@ const Integration = () => {
                             src
                         </span>
                         <span className='text-emerald-400'>
-                            &quot;https://vilyosupport.com/init.js&quot;
+                            &quot;https://vilyo-customer-care-support.vercel.app/widget.js&quot;
 
                         </span>
 
