@@ -31,8 +31,11 @@ export async  function POST(req:Request){
          }).setIssuedAt().setExpirationTime("2h").sign(secret);
 
 
-         return NextResponse.json({token})
+         const response = NextResponse.json({token})
+         
+         response.headers.set("Access-Control-Allow-Origin", "*")
 
+         return response;
         
     } catch (error) {
         console.error("Session Error:", error);
@@ -44,4 +47,16 @@ export async  function POST(req:Request){
 
         
     }
+}
+
+
+export async function OPTIONS(){
+    return new NextResponse(null,{
+        status:204,
+        headers:{
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST,OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        }
+    })
 }
