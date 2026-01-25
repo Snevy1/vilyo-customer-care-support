@@ -1,6 +1,7 @@
 "use client";
 
 
+import DashboardOverView from '@/components/dashboard/dashboardOverview';
 import InitialForm from '@/components/dashboard/InitialForm'
 import React, { useEffect, useState } from 'react'
 
@@ -35,7 +36,7 @@ const Page = () => {
 
 
   return (
-    <div className='flex-1 flex w-full'>
+    <div className='flex-1 w-full'>
 
         {
             !isMetadaAvailable ? (
@@ -45,7 +46,7 @@ const Page = () => {
         
                 
             ):(
-              <></>
+              <DashboardOverView />
             )
         }
         

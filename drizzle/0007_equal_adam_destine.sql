@@ -1,0 +1,1 @@
+ALTER TABLE "conversation" ALTER COLUMN "user_email" DROP NOT NULL;

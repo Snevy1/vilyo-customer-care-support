@@ -1,12 +1,13 @@
 "use client";
 
-
-
-
-import { AlertCircle, Bot, MessageCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
+import { AlertCircle, Bot, ChevronDown, MessageCircle, Send } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, Suspense } from 'react';
 
 interface ChatBotMetadata {
     id: string;
@@ -18,32 +19,25 @@ interface Section {
     id:string;
     name:string;
     source_ids: string[];
-
 }
 
-const EmbedPage = () => {
-
+const EmbedPageContent = () => {
     const searchParams = useSearchParams();
     const token = searchParams.get("token");
 
-     const [metadata, setMetadata] = useState<ChatBotMetadata | null>(null);
-     const [sections, setSections] = useState<Section[]>([]);
-     const [loading, setLoading] = useState(true);
-     const [error, setError] = useState("");
-     const [isOpen, setIsOpen] = useState(false) ; // Default closed (toggle button)
+    const [metadata, setMetadata] = useState<ChatBotMetadata | null>(null);
+    const [sections, setSections] = useState<Section[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
+    const [isOpen, setIsOpen] = useState(false);
 
-     // chat states
+    const [messages, setMessages] = useState<any[]>([]);
+    const [input, setInput] = useState("");
+    const [isTyping, setIsTyping] = useState(false);
+    const [activeSection, setActiveSection] = useState<string | null>(null);
+    const scrollViewportRef = useRef<HTMLDivElement>(null);
 
-     const [messages, setMessages] = useState<any[]>([]);
-     const [input, setInput] = useState("");
-     const [isTyping, setIsTyping] = useState(false);
-     const [activeSection, setActiveSection] = useState<string | null>(null);
-     const scrollViewportRef = useRef<HTMLDivElement>(null);
-
-
-
-
-     useEffect(()=>{
+    useEffect(()=>{
         document.body.style.backgroundColor = "transparent";
         document.documentElement.style.backgroundColor = "transparent";
 
@@ -55,11 +49,9 @@ const EmbedPage = () => {
                 borderRadius: "30px"
             },"*" )
         }
+    },[]);
 
-
-     },[]);
-
-     const toggleOpen = ()=>{
+    const toggleOpen = ()=>{
         const newState = !isOpen;
         setIsOpen(newState)
 
@@ -71,7 +63,6 @@ const EmbedPage = () => {
                 borderRadius: "12px"
             },"*");
         }else {
-
             window.parent.postMessage(
                 {type: "resize", width: "60px",
                     height: "60px",
@@ -79,18 +70,10 @@ const EmbedPage = () => {
                 },
                 "*"
             );
-
-
-
-
         }
+    };
 
-
-     };
-
-
-
-     useEffect(()=>{
+    useEffect(()=>{
         if(!token){
             setError("Missing session token");
             setLoading(false);
@@ -107,8 +90,6 @@ const EmbedPage = () => {
 
                 setMetadata(data.metadata);
                 setSections(data.sections || []);
-
-                // Initialize Chat
 
                 setMessages([{
                     role: "assistant",
@@ -128,88 +109,284 @@ const EmbedPage = () => {
 
         fetchConfig();
 
+    },[token]);
 
-     },[]);
-
-     useEffect(()=>{
+    useEffect(()=>{
         if(scrollViewportRef.current){
             scrollViewportRef.current.scrollIntoView({behavior: "smooth"})
         }
-     },[messages, isTyping,isOpen]); // Scroll when opened too
+    },[messages, isTyping,isOpen]);
 
+    const handleSend = async()=>{
+        if(!input.trim() || !token) return;
 
+        const currentSection = sections.find((s)=>s.name === activeSection);
+        const sourceIds = currentSection?.source_ids || [];
 
+        const userMessage = {role: "user", content:input, section:activeSection}
+        setMessages((prev)=>[...prev, userMessage]);
+        setInput("");
+        setIsTyping(true);
 
-const handleSend = async()=>{
+        try {
+            const res = await fetch("/api/chat/public",{
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    messages: [...messages, userMessage],
+                    knowledge_source_ids: sourceIds
+                })
+            });
 
-}
-
-
-const handleKeyDown = (e:React.KeyboardEvent)=>{
-    if(e.key === "Enter" && !e.shiftKey){
-        e.preventDefault();
-
-        handleSend();
-
+            if(res.ok){
+                const data = await res.json();
+                setMessages((prev)=>[
+                    ...prev,
+                    {role: "assistant", content: data.response, section:null}
+                ]);
+            }else{
+                setMessages((prev)=>[
+                    ...prev,{
+                        role: "assistant",
+                        content: "I'm having trouble connecting right now.Please try again.",
+                        section: null,
+                    }
+                ])
+            }
+            
+        } catch (error) {
+            console.error(error)
+            
+        }finally{
+            setIsTyping(false)
+        }
     }
-}
 
+    const handleSectionClick = (sectionName:string)=>{
+        setActiveSection(sectionName);
+        const userMessage = {role: "user", content:sectionName, section:null};
+        setMessages((prev)=>[...prev, userMessage]);
+        setInput("");
+        setIsTyping(true);
 
-const primaryColor = metadata?.color || "#4f46e5";
+        setTimeout(()=>{
+            setIsTyping(false);
+            const aiMessage = {
+                role: "assistant",
+                content: `You can ask me any question related to "${sectionName}"`,
+                section: sectionName
+            };
 
-if(loading) return null;
+            setMessages((prev)=>[...prev, aiMessage])
+        }, 800)
+    };
 
-if(error && isOpen){
-    return(
-        <div className='flex flex-col items-center justify-center h-full bg-[#0e0e0e]'>
-            <AlertCircle className='w-10 h-10 mb-2' />
-            <p>{error}</p>
-        </div>
-    )
-}
+    const handleKeyDown = (e:React.KeyboardEvent)=>{
+        if(e.key === "Enter" && !e.shiftKey){
+            e.preventDefault();
+            handleSend();
+        }
+    }
 
-if(!isOpen){
+    const primaryColor = metadata?.color || "#4f46e5";
+
+    if(loading) return null;
+
+    if(error && isOpen){
+        return(
+            <div className='flex flex-col items-center justify-center h-full bg-[#0e0e0e]'>
+                <AlertCircle className='w-10 h-10 mb-2' />
+                <p>{error}</p>
+            </div>
+        )
+    }
+
+    if(!isOpen){
+        return (
+            <button
+                onClick={toggleOpen}
+                className='w-14 h-14 rounded-full flex items-center justify-center shadow-lg hover:brightness-110 transition-all text-white'
+                style={{backgroundColor: primaryColor}}
+            >
+                <MessageCircle  className='w-8 h-8' />
+            </button>
+        )
+    }
+
     return (
-        <button
-        onClick={toggleOpen}
-        className='w-14 h-14 rounded-full flex items-center justify-center shadow-lg hover:brightness-110 transition-all text-white'
-        style={{backgroundColor: primaryColor}}
-        >
-            <MessageCircle  className='w-8 h-8' />
-
-        </button>
-    )
-}
-
-
-  return (
-    <div className='flex flex-col h-screen bg-[#0A0A0E] overflow-hidden rounded-xl border border-white/10 shadow-2xl'>
-        <div className='h-14 border-b border-white/5 flex items-center justify-between px-4 bg-[#0E0E12] shadow-sm shrink-0 z-20'>
-        <div className='flex items-center gap-3'>
-            <div className='relative'>
-                <div className='w-8 h-8 rounded-full flex items-center justify-center shrink-0 border border-white/5 overflow-hidden'>
-                                    <Image
-                                    src={"/happy-customer-service-agent.jpg"}
-                                    alt='Support Agent'
-                                    className='w-full h-full rounded-md object-cover'
-                                    width={40}
-                                    height={40}
-                                     />
-                
-                                    </div>
-                <div className='absolute -bottom-0.5 -right-0.5 w-3 bg-emerald-500 border-2'>
-
+        <div className='flex flex-col h-screen bg-[#0A0A0E] overflow-hidden rounded-xl border border-white/10 shadow-2xl'>
+            <div className='h-14 border-b border-white/5 flex items-center justify-between px-4 bg-[#0E0E12] shadow-sm shrink-0 z-20'>
+                <div className='flex items-center gap-3'>
+                    <div className='relative'>
+                        <div className='w-8 h-8 rounded-full flex items-center justify-center shrink-0 border border-white/5 overflow-hidden'>
+                            <Image
+                                src={"/happy-customer-service-agent.jpg"}
+                                alt='Support Agent'
+                                className='w-full h-full rounded-md object-cover'
+                                width={40}
+                                height={40}
+                            />
+                        </div>
+                        <div className='absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-[#0E0E12]'></div>
+                    </div>
+                    <div>
+                        <h1 className='text-sm font-semibold text-white leading-none'>
+                            Support
+                        </h1> 
+                        <span className='text-[11px] text-emerald-400 font-medium'>
+                            Online
+                        </span>
+                    </div>
                 </div>
 
+                <button
+                    onClick={toggleOpen}
+                    className='p-2 text-zinc-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors'
+                    aria-label='Minimize Chat'
+                >
+                    <ChevronDown className='w-5 h-5' />
+                </button>
             </div>
 
-        </div>
+            <div className='flex-1 min-h-0 overflow-y-auto bg-zinc-950/30 p-4 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent'>
+                <div className='space-y-6 pb-4'>
+                    {messages.map((message, i)=>(
+                        <div
+                            key={i}
+                            className={cn(
+                                "flex w-full flex-col",
+                                message.role === "user" ? "items-end": "items-start"
+                            )}
+                        >
+                            <div
+                                className={cn(
+                                    "flex max-w-[85%] gap-3",
+                                    message.role === "user" ? "flex-row-reverse": "flex-row"
+                                )}
+                            >
+                                {message.role !== "user" && (
+                                    <div className='w-9 h-9 rounded-full relative flex items-center justify-center shrink-0 border border-white/5'>
+                                        <Image
+                                            src={"/happy-customer-service-agent.jpg"}
+                                            alt='Support Agent'
+                                            className='w-full h-full rounded-full object-cover'
+                                            width={50}
+                                            height={50}
+                                        />
+                                        <div className='absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-[#0E0E12]'></div>
+                                    </div>
+                                )} 
 
+                                <div className='space-y-2'>
+                                    <div
+                                        className={cn(
+                                            "p-3.5 rounded-2xl text-sm leading-relaxed shadow-sm",
+                                            message.role === "user"?
+                                            "bg-zinc-800 text-zinc-100 rounded-tr-sm"
+                                            : "bg-white text-zinc-900 rounded-tl-sm"
+                                        )}
+                                    >
+                                        {message.content}
+                                    </div>
 
+                                    {message.isWelcome && sections.length > 0 && (
+                                        <div className='flex flex-wrap gap-2 pt-1 ml-1 animate-in fade-in slide-in-from-top-1 duration-300'>
+                                            {sections.map((section)=>(
+                                                <button
+                                                    key={section.id}
+                                                    onClick={()=>handleSectionClick(section.name)}
+                                                    className='px-3 py-1.5 rounded-full border border-zinc-700 bg-zinc-800/50 hover:bg-zinc-700 hover:border-zinc-600 text-zinc-300 text-xs font-medium transition-all'
+                                                >
+                                                    {section.name}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+
+                    {isTyping && (
+                        <div className='flex w-full justify-start'>
+                            <div className='flex max-w-[85%] gap-3 flex-row'>
+                                <div className='w-9 h-9 rounded-full relative flex items-center justify-center shrink-0 border border-white/5'>
+                                    <Image
+                                        src={"/happy-customer-service-agent.jpg"}
+                                        alt='Support Agent'
+                                        className='w-full h-full rounded-full object-cover'
+                                        width={50}
+                                        height={50}
+                                    />
+                                    <div className='absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-[#0E0E12]'></div>
+                                </div>
+
+                                <div className='p-4 rounded-2xl bg-white text-zinc-900 rounded-tl-sm shadow-sm flex items-center gap-1'>
+                                    <div className='p-4 rounded-2xl bg-white text-zinc-900 rounded-tl-sm shadow-sm flex items-end gap-1'>
+                                        <div className='w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce [animation-delay:-0.3s]' />
+                                        <div className='w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce [animation-delay:-0.15s]' />
+                                        <div className='w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce' />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <div ref={scrollViewportRef} />
+                </div>
+            </div>
+
+            <div className='p-4 bg-[#0a0a0e] border-t border-white/5 shrink-0 z-20'>
+                <div className='relative'>
+                    <Textarea 
+                        value={input}
+                        onChange={(e)=>setInput(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        disabled={!activeSection}
+                        placeholder={
+                            activeSection ? "Type a message...": "Select a topic above..."
+                        }
+                        className='min-h-12.5 max-h-30 pr-12 outline-none text-white bg-zinc-900/50 border-white/10 resize-none rounded-xl disabled:opacity-50 disabled:cursor-not-allowed placeholder:text-zinc-600 focus:ring-1 focus:ring-white/20'
+                    />
+                    <Button
+                        size="icon"
+                        onClick={handleSend}
+                        disabled={!activeSection || !input.trim()}
+                        className={cn(
+                            "absolute right-2 bottom-2 h-8 w-8 transition-colors",
+                            !activeSection || !input.trim() ? "bg-zinc-800  text-zinc-500": ""
+                        )}
+                        style={
+                            activeSection && input.trim() ? 
+                            {backgroundColor: primaryColor, color: "white"}:{}
+                        }
+                    >
+                        <Send className='w-4 h-4' />
+                    </Button>
+                </div>
+
+                <div className='mt-2 text-center'>
+                    <Link
+                        href={"/"}
+                        className='text-[10px] text-zinc-600 font-medium hover:text-zinc-500 transition-colors'
+                    >
+                        Powered by Vilyo Support.
+                    </Link>
+                </div>
+            </div>
         </div>
-     
-    </div>
-  )
+    )
+}
+
+const EmbedPage = () => {
+    return (
+        <Suspense fallback={<div className="w-14 h-14 rounded-full bg-zinc-800 animate-pulse" />}>
+            <EmbedPageContent />
+        </Suspense>
+    )
 }
 
 export default EmbedPage;
