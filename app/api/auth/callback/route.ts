@@ -6,10 +6,9 @@ import { user as User } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { createClient } from '@supabase/supabase-js';
 
-// 1. Initialize Supabase Admin (Server-side only)
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!, // Use Service Role Key for administrative actions
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
   {
     auth: {
       autoRefreshToken: false,
@@ -20,8 +19,6 @@ const supabaseAdmin = createClient(
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
-
-  
 
   const code = searchParams.get("code");
   const error = searchParams.get("error");
@@ -48,52 +45,62 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "No organization ID found" }, { status: 500 });
     }
 
+    // Name parsing
+    const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+    const emailParts = user.email.split('@')[0];
+    const cleanName = emailParts
+      .replace(/[0-9]/g, '')
+      .split(/[._-]/)
+      .map(capitalize)
+      .join(' ');
+    const firstName = cleanName.split(' ')[0] || "User";
+    const lastName = cleanName.split(' ')[1] || "CRM";
 
+    let supabaseUserId: string | undefined;
 
-    // --- START SUPABASE HANDSHAKE ---
-    // We attempt to create the user. If they exist, we update their metadata.
+    // Check if user already exists
+    const { data: { users }, error: usersError } = await supabaseAdmin.auth.admin.listUsers();
+if (usersError) {
+  console.error("Failed to fetch users:", usersError);
+  return NextResponse.json({ error: "Failed to check user existence" }, { status: 500 });
+}
 
-const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-const emailParts = user.email.split('@')[0]; // "nevilsimiyu439"
-const cleanName = emailParts
-  .replace(/[0-9]/g, '') // remove numbers -> "nevilsimiyu"
-  .split(/[._-]/) // split by dots or dashes if they exist
-  .map(capitalize)
-  .join(' '); // "Nevil Simiyu"
+    const existingUser = users.find(u => u.email === user.email);
 
- const firstName = cleanName.split(' ')[0] || "User";
-const lastName = cleanName.split(' ')[1] || "CRM";
+    if (existingUser) {
+      // User exists - update metadata (trigger will auto-update profiles)
+      supabaseUserId = existingUser.id;
+      
+      await supabaseAdmin.auth.admin.updateUserById(existingUser.id, {
+        user_metadata: {
+          organization_id: organizationId,
+          full_name: user?.name || cleanName || "anonymous",
+          first_name: firstName,
+          last_name: lastName
+        }
+      });
+    } else {
+      // User doesn't exist - create new user (trigger will auto-create profile)
+      const { data: sbUser, error: sbError } = await supabaseAdmin.auth.admin.createUser({
+        email: user.email,
+        email_confirm: true,
+        user_metadata: {
+          organization_id: organizationId,
+          full_name: user?.name || cleanName || "anonymous",
+          first_name: firstName,
+          last_name: lastName
+        }
+      });
 
-
-    
-    const { data: sbUser, error: sbError } = await supabaseAdmin.auth.admin.createUser({
-      email: user.email,
-      email_confirm: true, // Auto-confirm so they don't get a Supabase welcome email
-      user_metadata: { 
-      organization_id: organizationId,
-      full_name: user?.name || cleanName || "anonymous", 
-      first_name: firstName,
-      last_name: lastName
+      if (sbError) {
+        console.error("Failed to create Supabase user:", sbError);
+        return NextResponse.json({ error: "Failed to create user" }, { status: 500 });
       }
-    });
 
-   
-    if (sbError && sbError.message.includes("already has been registered")) {
-      // User exists, so we find them and update the organization_id just in case it changed
-      const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
-      const existingUser = users.find(u => u.email === user.email);
-    
-      if (existingUser) {
-        await supabaseAdmin.auth.admin.updateUserById(existingUser.id, {
-          user_metadata: { 
-            organization_id: organizationId,
-            full_name: user?.name || "anonymous"
-          }
-        });
-      }
+      supabaseUserId = sbUser.user?.id;
     }
-    // --- END SUPABASE HANDSHAKE ---
 
+    // Update your existing Drizzle User table (keep this as it's separate)
     const existing = await db.select().from(User).where(eq(User.email, user.email));
 
     if (existing.length === 0) {
@@ -102,11 +109,16 @@ const lastName = cleanName.split(' ')[1] || "CRM";
         name: user?.name || "anonymous",
         organization_id: organizationId
       });
+    } else {
+      await db.update(User)
+        .set({ organization_id: organizationId })
+        .where(eq(User.email, user.email));
     }
 
     const response = NextResponse.redirect(new URL("/", req.url));
     const userSession = {
       email: user.email,
+      userId: supabaseUserId,
       organization_id: organizationId
     };
 
@@ -125,7 +137,6 @@ const lastName = cleanName.split(' ')[1] || "CRM";
     return NextResponse.json({ error: "Failed to authenticate" }, { status: 500 });
   }
 }
-
 
 
 

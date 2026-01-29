@@ -87,7 +87,32 @@ export const chatBotMetadata = pgTable("chatBotMetadata", {
  });
 
 
- export const conversation = pgTable("conversation", {
+ // In your existing chatbot database, modify:
+export const conversation = pgTable("conversation", {
+   id: text("id").primaryKey().default(sql `gen_random_uuid()`),
+   user_email: text("user_email"),
+   visitor_ip: text("visitor_ip"),
+   name: text("name"),
+   chatbot_id: text("chatbot_id").notNull(),
+   
+   
+   crm_contact_id: text("crm_contact_id"), // links to Supabase contacts.id
+   crm_company_id: text("crm_company_id"), // links to Supabase companies.id
+   crm_synced: text("crm_synced").default("false"), // "true", "false", "pending"
+   crm_synced_at: text("crm_synced_at"),
+   
+   
+   lead_score: text("lead_score"), // store as text, easier with drizzle
+   lead_quality: text("lead_quality"), // 'hot', 'warm', 'cold'
+   visitor_email: text("visitor_email"), // captured during chat
+   visitor_company: text("visitor_company"), // captured during chat
+   
+   created_at: text("created_at").default(sql`now()`),
+});
+
+
+ // Previous code
+ /* export const conversation = pgTable("conversation", {
    id: text("id") 
        .primaryKey()
        .default(sql `gen_random_uuid()`),
@@ -96,7 +121,7 @@ export const chatBotMetadata = pgTable("chatBotMetadata", {
     name: text("name"),
     chatbot_id: text("chatbot_id").notNull(),
     created_at: text("created_at").default(sql`now()`),
- });
+ }); */
 
  export const messages = pgTable("messages",{
    id: text("id") 
@@ -119,4 +144,8 @@ export const chatBotMetadata = pgTable("chatBotMetadata", {
    status:text("status").notNull().default("active"),
    created_at: text("created_at").default(sql`now()`),
  });
+
+
+
+
 
