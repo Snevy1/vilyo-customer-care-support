@@ -65,6 +65,7 @@ export const chatBotMetadata = pgTable("chatBotMetadata", {
        .primaryKey()
        .default(sql `gen_random_uuid()`),
     user_email: text("user_email").notNull(),
+     organization_id: text("organization_id").notNull(),
     color: text("color").default("#4f39f6"),
     welcome_message: text("welcome_message").default(
         "Hi there, How can I help you today?"

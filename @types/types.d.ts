@@ -26,6 +26,15 @@ interface Section {
 }
 
 
+interface LeadInfo {
+    first_name?: string; 
+    last_name?:string,
+     email?:string;
+     notes?:string
+     phoneNumber?: string;
+}
+
+
 export interface KnowledgeSource {
     id: string;
     user_email: string;
