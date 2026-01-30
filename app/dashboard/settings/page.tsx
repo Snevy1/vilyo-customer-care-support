@@ -26,7 +26,6 @@ useEffect(()=>{
   const fetchOrganizationData = async ()=>{
     const response = await fetch("/api/organization/fetch");
     const data = await response.json();
-    
     setOrganizationData(data.organization)
   };
 

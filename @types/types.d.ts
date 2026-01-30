@@ -34,6 +34,14 @@ interface LeadInfo {
      phoneNumber?: string;
 }
 
+interface NotificationProps{
+    email?: string, 
+    phone?: string,
+    reason:string,
+    user_message:string,
+    sessionId:string
+
+}
 
 export interface KnowledgeSource {
     id: string;

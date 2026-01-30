@@ -1,0 +1,1 @@
+ALTER TABLE "supportTickets" ADD COLUMN "conversation_id" text NOT NULL;
