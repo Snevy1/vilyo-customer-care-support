@@ -13,6 +13,7 @@ import { createClient } from '@supabase/supabase-js';
 import { checkRateLimit } from "@/lib/rate-limiter";
 import { calculateLeadScore } from "@/lib/lead-scoring";
 import { sendEmailNotification, sendHotLeadNotification, sendWarmLeadNotification } from "@/lib/email-notifications";
+import { calculateLeadScoreDynamic } from "@/lib/lead-scoring-dynamic";
 
 const openrouter = createOpenRouter({
     apiKey: process.env.OPENROUTER_API_KEY,
@@ -193,26 +194,29 @@ ${context}
         const MAX_TOOL_STEPS = 5;
 
         const tools = {
-            createLead: tool({
-    description: 'Saves user contact info to the CRM for follow-up.',
-    inputSchema: z.object({
-        first_name: z.string().describe('First name'),
-        last_name: z.string().describe('Last name'),
-        email: z.string().email().describe('Email address'),
-        phoneNumber: z.string().optional().describe('Phone Number'),
-        notes: z.string().describe('Context of the inquiry'),
-        intent_keywords: z.array(z.string()).optional().describe('Keywords indicating purchase intent'),
+           
+         createLead: tool({
+               description: 'Saves user contact info to the CRM for follow-up.',
+            inputSchema: z.object({
+                 first_name: z.string().describe('First name'),
+                 last_name: z.string().describe('Last name'),
+                 email: z.string().email().describe('Email address'),
+                 phoneNumber: z.string().optional().describe('Phone Number'),
+                 notes: z.string().describe('Context of the inquiry'),
+                 intent_keywords: z.array(z.string()).optional().describe('Keywords indicating purchase intent'),
     }),
-    execute: async ({ first_name, last_name, email, phoneNumber, notes, intent_keywords }) => {
-        try {
-            // Calculate lead score
+             execute: async ({ first_name, last_name, email, phoneNumber, notes, intent_keywords }) => {
+            try {
             const emailDomain = email.split('@')[1];
-            const leadScoreResult = calculateLeadScore({
+            
+            // Use dynamic scoring engine
+            const leadScoreResult = await calculateLeadScoreDynamic({
                 email_domain: emailDomain,
                 phone_provided: !!phoneNumber,
                 notes,
                 keywords_mentioned: intent_keywords,
-            });
+                // Add more factors as available
+            }, orgId);
 
             // Insert lead into database
             const { error } = await supabaseAdmin.from('contacts').insert({
@@ -232,9 +236,11 @@ ${context}
                 throw error;
             }
             
-            console.log(`Lead scored: ${leadScoreResult.score}/100 (${leadScoreResult.quality})`, leadScoreResult.reasoning);
+            console.log(`Lead scored: ${leadScoreResult.score}/100 (${leadScoreResult.quality})`);
+            console.log('Applied rules:', leadScoreResult.applied_rules);
+            console.log('Reasoning:', leadScoreResult.reasoning);
             
-            // Send instant notification for HOT leads
+            // Send notifications based on quality
             if (leadScoreResult.quality === 'hot') {
                 await sendHotLeadNotification({
                     organizationEmail: user_email,
@@ -246,16 +252,14 @@ ${context}
                     reasoning: leadScoreResult.reasoning,
                     sessionId,
                 });
-            }else if (leadScoreResult.quality === 'warm') {
-
-    // Optional: Send a less urgent notification for warm leads
-    await sendWarmLeadNotification({
-        organizationEmail: user_email,
-        leadName: `${first_name} ${last_name}`,
-        leadEmail: email,
-        score: leadScoreResult.score,
-    });
-}
+            } else if (leadScoreResult.quality === 'warm') {
+                await sendWarmLeadNotification({
+                    organizationEmail: user_email,
+                    leadName: `${first_name} ${last_name}`,
+                    leadEmail: email,
+                    score: leadScoreResult.score,
+                });
+            }
             
             return { 
                 success: true, 
