@@ -58,3 +58,4 @@ export interface KnowledgeSource {
 
  type SectionStatus = "active" | "draft" | "disabled";
 type Tone = "strict" | "neutral" | "friendly" | "empathetic";
+

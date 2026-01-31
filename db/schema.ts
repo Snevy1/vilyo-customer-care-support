@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable , text} from "drizzle-orm/pg-core";
+import { boolean, index, pgTable, text, timestamp, uniqueIndex, jsonb} from "drizzle-orm/pg-core";
 
  export const user = pgTable ("user", {
     id: text("id")
@@ -61,19 +61,24 @@ export const sections = pgTable("sections", {
 
 
 export const chatBotMetadata = pgTable("chatBotMetadata", {
-    id: text("id") 
-       .primaryKey()
-       .default(sql `gen_random_uuid()`),
+    id: text("id").primaryKey().default(sql`gen_random_uuid()`),
     user_email: text("user_email").notNull(),
-     organization_id: text("organization_id").notNull(),
+    organization_id: text("organization_id").notNull(),
+    
+    //   channel support
+    channels: text("channels").array().default(sql`ARRAY['web']::text[]`), // ['web', 'whatsapp']
+    
     color: text("color").default("#4f39f6"),
-    welcome_message: text("welcome_message").default(
-        "Hi there, How can I help you today?"
-    ),
+    welcome_message: text("welcome_message").default("Hi there, How can I help you today?"),
+    
+    // Channel-specific settings (JSON)
+    whatsapp_settings: jsonb("whatsapp_settings"), // { greeting: "...", quickReplies: [...] }
+    web_settings: jsonb("web_settings"), // { theme: "...", position: "..." }
+    
     created_at: text("created_at").default(sql`now()`),
-
-
-});
+}, (table) => ({
+    orgIdx: index("chatbot_org_idx").on(table.organization_id),
+}));
 
  export const team_members = pgTable("team_members",{
     id: text("id") 
@@ -88,28 +93,51 @@ export const chatBotMetadata = pgTable("chatBotMetadata", {
  });
 
 
- // In your existing chatbot database, modify:
+ //  Universal conversation table
 export const conversation = pgTable("conversation", {
-   id: text("id").primaryKey().default(sql `gen_random_uuid()`),
-   user_email: text("user_email"),
-   visitor_ip: text("visitor_ip"),
-   name: text("name"),
+   id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+   
+   // Channel identification
+   channel: text("channel").notNull().default("web"), // 'web' | 'whatsapp'
    chatbot_id: text("chatbot_id").notNull(),
+   organization_id: text("organization_id").notNull(),
    
+   // Universal fields
+   name: text("name"),
+   visitor_ip: text("visitor_ip"),
+   user_email: text("user_email"),
    
-   crm_contact_id: text("crm_contact_id"), // links to Supabase contacts.id
-   crm_company_id: text("crm_company_id"), // links to Supabase companies.id
-   crm_synced: text("crm_synced").default("false"), // "true", "false", "pending"
-   crm_synced_at: text("crm_synced_at"),
+   // Channel-specific identifiers
+   whatsapp_phone: text("whatsapp_phone"),
+   session_token: text("session_token"),
    
+   // CRM integration
+   crm_contact_id: text("crm_contact_id"),
+   crm_company_id: text("crm_company_id"),
+   crm_synced: boolean("crm_synced").default(false),
+   crm_synced_at: timestamp("crm_synced_at", { withTimezone: true }),
    
-   lead_score: text("lead_score"), // store as text, easier with drizzle
-   lead_quality: text("lead_quality"), // 'hot', 'warm', 'cold'
-   visitor_email: text("visitor_email"), // captured during chat
-   visitor_company: text("visitor_company"), // captured during chat
+   // Lead scoring
+   lead_score: text("lead_score"),
+   lead_quality: text("lead_quality"),
+   visitor_email: text("visitor_email"),
+   visitor_company: text("visitor_company"),
    
-   created_at: text("created_at").default(sql`now()`),
-});
+   // Conversation state
+   status: text("status").default("active"), // 'active' | 'resolved' | 'archived'
+   assigned_to: text("assigned_to"), // team member handling this
+   
+   created_at: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
+   updated_at: timestamp("updated_at", { withTimezone: true }).default(sql`now()`),
+}, (table) => ({
+   channelIdx: index("conversation_channel_idx").on(table.channel),
+   orgIdx: index("conversation_org_idx").on(table.organization_id),
+   chatbotIdx: index("conversation_chatbot_idx").on(table.chatbot_id),
+   whatsappPhoneIdx: index("conversation_whatsapp_phone_idx").on(table.whatsapp_phone),
+   statusIdx: index("conversation_status_idx").on(table.status),
+   // Composite index for common queries
+   orgChannelIdx: index("conversation_org_channel_idx").on(table.organization_id, table.channel),
+}));
 
 
 
@@ -125,15 +153,36 @@ export const conversation = pgTable("conversation", {
     created_at: text("created_at").default(sql`now()`),
  }); */
 
- export const messages = pgTable("messages",{
-   id: text("id") 
-       .primaryKey()
-       .default(sql `gen_random_uuid()`),
+ //  Enhanced messages table
+export const messages = pgTable("messages", {
+   id: text("id").primaryKey().default(sql`gen_random_uuid()`),
    conversation_id: text("conversation_id").notNull(),
-   role: text("role").notNull(),
-   content:text("content").notNull(),
-   created_at: text("created_at").default(sql`now()`),
- });
+   role: text("role").notNull(), // 'user' | 'assistant' | 'system'
+   content: text("content").notNull(),
+   
+   // Rich media support
+   message_type: text("message_type").default("text"), // 'text' | 'image' | 'audio' | 'document' | 'video'
+   media_url: text("media_url"),
+   media_mime_type: text("media_mime_type"),
+   
+   // WhatsApp specific
+   whatsapp_message_id: text("whatsapp_message_id"),
+   whatsapp_status: text("whatsapp_status"), // 'sent' | 'delivered' | 'read' | 'failed'
+   
+   // Human intervention
+   is_manual_reply: boolean("is_manual_reply").default(false),
+   replied_by_user_id: text("replied_by_user_id"),
+   
+   // Metadata
+   metadata: jsonb("metadata"), // { confidence: 0.95, tool_calls: [...] }
+   
+   created_at: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
+}, (table) => ({
+   conversationIdx: index("messages_conversation_idx").on(table.conversation_id),
+   whatsappMsgIdx: index("messages_whatsapp_id_idx").on(table.whatsapp_message_id),
+   createdAtIdx: index("messages_created_at_idx").on(table.created_at),
+   roleIdx: index("messages_role_idx").on(table.role),
+}));
 
 
  export const widgets = pgTable("widgets", {
@@ -159,6 +208,87 @@ export const conversation = pgTable("conversation", {
  });
 
 
+ export const whatsAppTenant = pgTable("whatsAppTenant", {
+  id: text("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  name: text("name"),
+  email: text("email").notNull().unique(),
+  organization_id: text("organization_id").notNull(),
+  kapsoCustomerId: text("kapsoCustomerId").notNull().unique(),
+  isWhatsappConnected: boolean("isWhatsappConnected").default(false).notNull(),
+  whatsappPhoneNumberId: text("whatsapp_phone_number_id"), // The ID used for sending messages
+  whatsappBusinessId: text("whatsapp_business_id"),       // The Meta WABA ID 
+},
+(table) => {
+  return {
+    // Primary key already has an index
+    emailIdx: uniqueIndex("whatsapp_tenant_email_idx").on(table.email),
+    orgIdx: uniqueIndex("whatsapp_tenant_org_idx").on(table.organization_id),
+    kapsoIdx: uniqueIndex("whatsapp_tenant_kapso_idx").on(table.kapsoCustomerId),
+    // Index for common query patterns
+    isConnectedIdx: index("whatsapp_tenant_connected_idx").on(table.isWhatsappConnected),
+  }});
+
+
+export const whatsAppSubscription = pgTable("whatsAppSubscription", {
+  id: text("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  tenant_id: text("tenant_id")
+    .notNull()
+    .references(() => whatsAppTenant.id, { onDelete: "cascade" }),
+     organization_id: text("organization_id").notNull(),
+  status: text("status").notNull(),
+  plan_id: text("plan_id").notNull(),
+  current_period_end: timestamp("current_period_end", { withTimezone: true }).notNull(),
+},
+(table) => {
+  return {
+    // Index for foreign key lookups
+    tenantIdx: index("whatsapp_subscription_tenant_idx").on(table.tenant_id),
+    
+    orgIdx: index("whatsapp_subscription_org_idx").on(table.organization_id),
+    
+    // Index for status filtering (active, canceled, etc.)
+    statusIdx: index("whatsapp_subscription_status_idx").on(table.status),
+    
+    // Index for subscription expiry queries
+    periodEndIdx: index("whatsapp_subscription_period_end_idx").on(table.current_period_end),
+    
+    // Composite index for common queries
+    statusPeriodIdx: index("whatsapp_subscription_status_period_idx").on(
+      table.status,
+      table.current_period_end
+    ),
+  };
+});
 
 
 
+
+
+
+
+
+
+
+// WhatsApp-specific message queue (for retries/failures)
+export const whatsappMessageQueue = pgTable("whatsappMessageQueue", {
+   id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+   conversation_id: text("conversation_id").notNull(),
+   phone_number_id: text("phone_number_id").notNull(),
+   to: text("to").notNull(),
+   content: text("content").notNull(),
+   message_type: text("message_type").default("text"),
+   
+   status: text("status").notNull().default("pending"), // 'pending' | 'sent' | 'failed'
+   retry_count: text("retry_count").default("0"),
+   last_error: text("last_error"),
+   
+   created_at: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
+   processed_at: timestamp("processed_at", { withTimezone: true }),
+}, (table) => ({
+   statusIdx: index("whatsapp_queue_status_idx").on(table.status),
+   conversationIdx: index("whatsapp_queue_conversation_idx").on(table.conversation_id),
+}));

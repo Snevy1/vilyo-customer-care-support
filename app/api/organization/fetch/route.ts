@@ -1,7 +1,7 @@
 
 // app/api/organization/fetch/route.ts
 import { db } from "@/db/client";
-import { metadata } from "@/db/schema";
+import { metadata, whatsAppSubscription } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { createClient } from '@supabase/supabase-js';
@@ -23,6 +23,14 @@ export async function GET() {
     const [metadataRecord] = await db.select()
       .from(metadata)
       .where(eq(metadata.user_email, email));
+
+    // Get WhatsappSubscription 
+
+  const [WhatsappSubscription] = await db
+  .select()
+  .from(whatsAppSubscription)
+  .where(eq(whatsAppSubscription.organization_id, organization_id))
+  .limit(1);
 
     // Create Supabase admin client (bypasses RLS)
     const supabaseAdmin = createClient(
