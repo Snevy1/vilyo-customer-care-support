@@ -1,7 +1,9 @@
-import { NextResponse } from "next/server";
+// Before addition of human takeover
+
+/* import { NextResponse } from "next/server";
 import { db } from "@/db/client";
-import { whatsAppTenant, messages as messagesTable, conversation, knowledge_source, supportTickets, appointments } from "@/db/schema";
-import { eq, desc, inArray, and } from "drizzle-orm";
+import { whatsAppTenant, messages as messagesTable, conversation, knowledge_source, supportTickets } from "@/db/schema";
+import { eq, desc, inArray } from "drizzle-orm";
 import { whatsappClient } from "@/lib/whatsapp/whatsapp-client";
 import { generateText, tool, stepCountIs, ToolSet } from 'ai';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
@@ -12,7 +14,6 @@ import { summarizeConversation } from "@/lib/openAI";
 import { createClient } from '@supabase/supabase-js';
 import { checkRateLimit } from "@/lib/rate-limiter";
 import { sendEmailNotification, sendHotLeadNotification, sendWarmLeadNotification } from "@/lib/email-notifications";
-import { checkGoogleCalendarSlot, createGoogleCalendarEvent, getAlternativeSlots, getOrgGoogleAuth } from "@/lib/appointments/google-calendar";
 
 const openrouter = createOpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
 
@@ -59,8 +60,6 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
     }
 
-    let {  knowledge_source_ids } = await req.json();
-
     // 3. Persistence: Ensure Conversation exists
     try {
         const [existingConv] = await db
@@ -75,51 +74,16 @@ export async function POST(req: Request) {
                 chatbot_id: tenant.id,
                 name: customerPhone,
                 organization_id: orgId,
-                visitor_ip: "WhatsApp User",
-                is_human_takeover: false, // Default to bot mode
+                visitor_ip: "WhatsApp User"
             });
         }
 
-        // Save user message FIRST
+        // Save user message
         await db.insert(messagesTable).values({
             conversation_id: sessionId,
             role: "user",
             content: userMessage,
         });
-
-        // ========================================
-        // HUMAN TAKEOVER CHECK
-        // ========================================
-        const [currentConv] = await db
-            .select()
-            .from(conversation)
-            .where(eq(conversation.id, sessionId))
-            .limit(1);
-
-        if (currentConv?.is_human_takeover) {
-            console.log(`[HUMAN MODE] Conversation ${sessionId} is in human takeover. Bot skipping.`);
-            
-            // Optional: Notify human agents via webhook/email
-            // await notifyAgentOfNewMessage(orgId, sessionId, userMessage);
-            
-            
-            return NextResponse.json({ 
-                received: true, 
-                mode: 'human_takeover',
-                message: 'Message saved. Awaiting human response.'
-            });
-        }
-
-        // Check if bot is globally disabled for this tenant
-        if (tenant.bot_enabled === false) {
-            console.log(`[BOT DISABLED] Tenant ${tenant.id} has bot disabled globally.`);
-            return NextResponse.json({ 
-                received: true, 
-                mode: 'bot_disabled',
-                message: 'Bot is disabled for this tenant.'
-            });
-        }
-
     } catch (error) {
         console.error("Database Persistence Error:", error);
         // Continue even if persistence fails
@@ -140,24 +104,27 @@ export async function POST(req: Request) {
         }));
     } catch (error) {
         console.error("Failed to fetch conversation history:", error);
+        // Fallback to current message only
         messages = [{ role: 'user', content: userMessage }];
     }
 
-    // 5. RAG Retrieval 
+    // 5. RAG Retrieval (if tenant has knowledge sources configured)
     let context = "";
+    try {
+        // You'll need to link knowledge sources to WhatsApp tenants
+        // For now, fetch all knowledge sources for the org (you may want to filter)
+        let { messages, knowledge_source_ids } = await req.json();
 
-        if (knowledge_source_ids && knowledge_source_ids.length > 0) {
-            try {
-                const sources = await db
-                    .select({ content: knowledge_source.content })
-                    .from(knowledge_source)
-                    .where(inArray(knowledge_source.id, knowledge_source_ids));
-                
-                context = sources.map((s) => s.content).filter(Boolean).join("\n\n");
-            } catch (error) {
-                console.error("RAG Retrieval Error:", error);
-            }
-        }
+        const sources = await db
+            .select({ content: knowledge_source.content })
+            .from(knowledge_source)
+            .where(eq(knowledge_source.id, knowledge_source_ids))
+            .limit(10); // Limit to avoid token overflow
+
+        context = sources.map(s => s.content).filter(Boolean).join("\n\n");
+    } catch (error) {
+        console.error("RAG Retrieval Error:", error);
+    }
 
     // 6. Token Management & Summarization
     const tokenCount = countConversationTokens(messages);
@@ -176,7 +143,7 @@ export async function POST(req: Request) {
         }
     }
 
-    // 7. System Prompt
+    // 7. System Prompt (Full version from web bot)
     const systemPrompt = `Your name is Fiona. You are a friendly, human-like customer support specialist.
 
 CRITICAL RULES:
@@ -222,13 +189,15 @@ ${context}
                     try {
                         const emailDomain = email.split('@')[1];
                         
+                        // Use dynamic scoring engine
                         const leadScoreResult = await calculateLeadScoreDynamic({
                             email_domain: emailDomain,
-                            phone_provided: !!phoneNumber || !!customerPhone,
+                            phone_provided: !!phoneNumber || !!customerPhone, // WhatsApp always has phone
                             notes,
                             keywords_mentioned: intent_keywords,
                         }, orgId);
 
+                        // Insert lead into database
                         const { error } = await supabaseAdmin.from('contacts').insert({
                             first_name,
                             last_name,
@@ -247,7 +216,10 @@ ${context}
                         }
                         
                         console.log(`Lead scored: ${leadScoreResult.score}/100 (${leadScoreResult.quality})`);
+                        console.log('Applied rules:', leadScoreResult.applied_rules);
+                        console.log('Reasoning:', leadScoreResult.reasoning);
                         
+                        // Send notifications based on quality
                         if (leadScoreResult.quality === 'hot') {
                             await sendHotLeadNotification({
                                 organizationEmail: tenant.email,
@@ -298,12 +270,6 @@ ${context}
                             status: 'open'
                         });
 
-                        // 🚨 AUTOMATICALLY ENABLE HUMAN TAKEOVER
-                        await db
-                            .update(conversation)
-                            .set({ is_human_takeover: true })
-                            .where(eq(conversation.id, sessionId));
-
                         // Send email notification
                         const emailResult = await sendEmailNotification({
                             email: tenant.email,
@@ -316,142 +282,12 @@ ${context}
                             console.error("Email notification failed for escalation:", sessionId);
                         }
 
-                        return { success: true, message: "Ticket created and human takeover enabled" };
+                        return { success: true, message: "Ticket created and notification sent" };
                     } catch (error) {
                         console.error("Escalation failed:", error);
                         throw new Error("Failed to escalate issue");
                     }
                 }
-            }),
-
-            bookAppointment: tool({
-              description: 'Books an appointment with the business',
-              inputSchema: z.object({
-                customer_name: z.string().describe('Full name of the customer'),
-                customer_email: z.string().email().describe('Email address for confirmation'),
-                customer_phone: z.string().optional().describe('Phone number for reminders'),
-                preferred_date: z.string().describe('Preferred date in YYYY-MM-DD format'),
-                preferred_time: z.string().describe('Preferred time in HH:MM format (24-hour)'),
-                service_type: z.string().describe('Type of service: demo, consultation, support, etc.'),
-                duration_minutes: z.number().default(30).describe('Duration of appointment in minutes'),
-                notes: z.string().optional().describe('Additional notes or requirements')
-              }),
-              execute: async (input) => {
-                
-                
-                if (!orgId) {
-                  return { 
-                    success: false, 
-                    message: "Organization not identified. Please reconnect your account."
-                  };
-                }
-            
-                // Get organization's Google auth
-                const auth = await getOrgGoogleAuth(orgId);
-                
-                if (!auth) {
-                  return { 
-                    success: false, 
-                    message: "Google Calendar is not connected. Please connect your calendar in settings."
-                  };
-                }
-            
-                // Check availability
-                const isAvailable = await checkGoogleCalendarSlot(
-                  auth,
-                  input.preferred_date, 
-                  input.preferred_time,
-                  input.duration_minutes
-                );
-                
-                if (!isAvailable) {
-                  // Get alternative slots
-                  const alternatives = await getAlternativeSlots(
-                    auth,
-                    input.preferred_date,
-                    input.preferred_time,
-                    input.duration_minutes
-                  );
-                  
-                  const altMessage = alternatives.length > 0 
-                    ? `Here are some alternative times:\n${alternatives.slice(0, 3).map(alt => `• ${alt.date} at ${alt.time}`).join('\n')}`
-                    : "No alternative times available today. Please try a different date.";
-                  
-                  return { 
-                    success: false, 
-                    message: `That time slot is not available. ${altMessage}`,
-                    alternatives: alternatives.slice(0, 3)
-                  };
-                }
-                
-                // Create event
-                const startDateTime = new Date(`${input.preferred_date}T${input.preferred_time}:00`);
-                const endDateTime = new Date(startDateTime.getTime() + input.duration_minutes * 60000);
-                
-                const event = await createGoogleCalendarEvent(auth, {
-                  summary: `${input.service_type} - ${input.customer_name}`,
-                  description: `Customer: ${input.customer_name}\nPhone: ${input.customer_phone || 'Not provided'}\nService: ${input.service_type}\nNotes: ${input.notes || 'None'}`,
-                  start: startDateTime,
-                  end: endDateTime,
-                  attendees: [{ email: input.customer_email, displayName: input.customer_name }],
-                  customerEmail: input.customer_email,
-                  customerName: input.customer_name,
-                  customerPhone: input.customer_phone,
-                  serviceType: input.service_type
-                });
-                
-                
-                
-                // Save to DB
-                await db.insert(appointments).values({
-                  id: crypto.randomUUID(),
-                  organization_id: orgId,
-                  conversation_id: null,
-                  customer_email: input.customer_email,
-                  customer_name: input.customer_name,
-                  customer_phone: input.customer_phone,
-                  service_type: input.service_type,
-                  google_event_id: event.id,
-                  google_meet_link: event.hangoutLink,
-                  scheduled_at: startDateTime,
-                  duration_minutes: input.duration_minutes.toString(),
-                  status: 'confirmed',
-                  created_at: new Date(),
-                  notes: input.notes
-                });
-                
-                // Format date/time for display
-                const formattedDate = new Date(startDateTime).toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                });
-                
-                const formattedTime = new Date(startDateTime).toLocaleTimeString('en-US', {
-                  hour: 'numeric',
-                  minute: '2-digit',
-                  hour12: true
-                });
-                
-                const responseMessage = event.hangoutLink 
-                  ? `✅ **Appointment Confirmed!**\n\n📅 **Date:** ${formattedDate}\n⏰ **Time:** ${formattedTime}\n⏱️ **Duration:** ${input.duration_minutes} minutes\n📧 **Confirmation sent to:** ${input.customer_email}\n\n🔗 **Google Meet Link:** ${event.hangoutLink}\n📅 **Add to Calendar:** ${event.htmlLink}`
-                  : `✅ **Appointment Confirmed!**\n\n📅 **Date:** ${formattedDate}\n⏰ **Time:** ${formattedTime}\n⏱️ **Duration:** ${input.duration_minutes} minutes\n📧 **Confirmation sent to:** ${input.customer_email}\n\n📅 **View in Calendar:** ${event.htmlLink}`;
-                
-                return { 
-                  success: true, 
-                  message: responseMessage,
-                  details: {
-                    confirmationNumber: event.id.slice(0, 8),
-                    date: input.preferred_date,
-                    time: input.preferred_time,
-                    duration: `${input.duration_minutes} minutes`,
-                    customer_email: input.customer_email,
-                    event_link: event.htmlLink,
-                    meet_link: event.hangoutLink
-                  }
-                };
-              }
             })
         } satisfies ToolSet;
 
@@ -484,6 +320,7 @@ ${context}
     } catch (error) {
         console.error("WhatsApp AI Error:", error);
         
+        // Send error message to user
         try {
             await whatsappClient.messages.sendText({
                 phoneNumberId: phoneNumberId,
@@ -496,4 +333,4 @@ ${context}
     }
 
     return NextResponse.json({ received: true });
-}
+} */

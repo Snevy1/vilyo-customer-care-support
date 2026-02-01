@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { boolean, index, pgTable, text, timestamp, uniqueIndex, jsonb} from "drizzle-orm/pg-core";
+import { boolean, index, pgTable, text, timestamp, uniqueIndex, jsonb, serial, bigint} from "drizzle-orm/pg-core";
 
  export const user = pgTable ("user", {
     id: text("id")
@@ -12,6 +12,19 @@ import { boolean, index, pgTable, text, timestamp, uniqueIndex, jsonb} from "dri
         created_at: text("created_at").default(sql`now()`),   
 }); 
 
+// organization
+export const organizations = pgTable("organizations", {
+  id: text("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  owner_email: text("owner_email").notNull(),
+  created_at: timestamp("created_at").default(sql`now()`),
+  updated_at: timestamp("updated_at").default(sql`now()`),
+}, (table) => ({
+  emailIdx: uniqueIndex("organizations_email_idx").on(table.email),
+}));
 
 export const metadata = pgTable("metadata", {
     id: text("id").primaryKey()
@@ -74,6 +87,7 @@ export const chatBotMetadata = pgTable("chatBotMetadata", {
     // Channel-specific settings (JSON)
     whatsapp_settings: jsonb("whatsapp_settings"), // { greeting: "...", quickReplies: [...] }
     web_settings: jsonb("web_settings"), // { theme: "...", position: "..." }
+    bot_enabled: boolean('bot_enabled').default(true),
     
     created_at: text("created_at").default(sql`now()`),
 }, (table) => ({
@@ -110,6 +124,11 @@ export const conversation = pgTable("conversation", {
    // Channel-specific identifiers
    whatsapp_phone: text("whatsapp_phone"),
    session_token: text("session_token"),
+
+    // Takeover
+  is_human_takeover: boolean('is_human_takeover').default(false),
+  human_agent_id: text('human_agent_id'), // Optional: track which agent took over
+  takeover_started_at: timestamp('takeover_started_at'),
    
    // CRM integration
    crm_contact_id: text("crm_contact_id"),
@@ -172,11 +191,17 @@ export const messages = pgTable("messages", {
    // Human intervention
    is_manual_reply: boolean("is_manual_reply").default(false),
    replied_by_user_id: text("replied_by_user_id"),
-   
+
+
+  sent_by_human: boolean('sent_by_human').default(false),
+  agent_id: text('agent_id'),
+  delivery_status: text('delivery_status'), //   
    // Metadata
    metadata: jsonb("metadata"), // { confidence: 0.95, tool_calls: [...] }
    
    created_at: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
+
+
 }, (table) => ({
    conversationIdx: index("messages_conversation_idx").on(table.conversation_id),
    whatsappMsgIdx: index("messages_whatsapp_id_idx").on(table.whatsapp_message_id),
@@ -216,6 +241,8 @@ export const messages = pgTable("messages", {
   email: text("email").notNull().unique(),
   organization_id: text("organization_id").notNull(),
   kapsoCustomerId: text("kapsoCustomerId").notNull().unique(),
+  bot_enabled: boolean('bot_enabled').default(true), // Global bot on/off
+  auto_takeover_on_escalation: boolean('auto_takeover_on_escalation').default(true),
   isWhatsappConnected: boolean("isWhatsappConnected").default(false).notNull(),
   whatsappPhoneNumberId: text("whatsapp_phone_number_id"), // The ID used for sending messages
   whatsappBusinessId: text("whatsapp_business_id"),       // The Meta WABA ID 
@@ -292,3 +319,62 @@ export const whatsappMessageQueue = pgTable("whatsappMessageQueue", {
    statusIdx: index("whatsapp_queue_status_idx").on(table.status),
    conversationIdx: index("whatsapp_queue_conversation_idx").on(table.conversation_id),
 }));
+
+
+ // agent activity log (optional )
+export const agentActivity = pgTable('agent_activity', {
+  id: serial('id').primaryKey(),
+  conversation_id: text('conversation_id').references(() => conversation.id),
+  agent_id: text('agent_id').notNull(),
+  action: text('action').notNull(), // 'takeover', 'release', 'message_sent'
+  created_at: timestamp('created_at').defaultNow().notNull(),
+});
+
+
+
+// appointments
+
+
+export const appointments = pgTable("appointments", {
+  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversation_id: text("conversation_id"),
+  organization_id: text("organization_id").notNull(),
+  
+  customer_name: text("customer_name").notNull(),
+  customer_email: text("customer_email").notNull(),
+  customer_phone: text("customer_phone"),
+  
+  service_type: text("service_type"), // "demo", "consultation"
+  scheduled_at: timestamp("scheduled_at", { withTimezone: true }).notNull(),
+  duration_minutes: text("duration_minutes").default("30"),
+  
+  google_event_id: text("google_event_id"), // For syncing
+  google_meet_link: text("google_meet_link"), // Auto-generated
+  
+  status: text("status").default("confirmed"), // confirmed | cancelled | completed
+  reminder_sent: boolean("reminder_sent").default(false),
+  
+  created_at: timestamp("created_at").default(sql`now()`),
+  notes: text("notes")
+}, (table) => ({
+  orgIdx: index("appointments_org_idx").on(table.organization_id),
+  scheduledIdx: index("appointments_scheduled_idx").on(table.scheduled_at),
+  statusIdx: index("appointments_status_idx").on(table.status),
+}));
+
+
+
+
+// Database schema for storing Google OAuth tokens
+export const googleCalendarConnections = pgTable('google_calendar_connections', {
+  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+  organization_id: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  access_token: text('access_token'),
+  refresh_token: text('refresh_token'),
+  expiry_date: bigint('expiry_date', { mode: 'number' }),
+  scope: text('scope').notNull(),
+  calendar_id: text('calendar_id').default('primary'),
+  email: text('email'),
+  created_at: timestamp('created_at').defaultNow(),
+  updated_at: timestamp('updated_at').defaultNow(),
+});

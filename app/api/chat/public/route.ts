@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 import { db } from "@/db/client";
-import { conversation, knowledge_source, chatBotMetadata, supportTickets } from "@/db/schema";
+import { conversation, knowledge_source, chatBotMetadata, supportTickets, appointments } from "@/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { messages as messagesTable } from "@/db/schema";
 import { countConversationTokens } from "@/lib/countConversationTokens";
@@ -14,6 +14,7 @@ import { checkRateLimit } from "@/lib/rate-limiter";
 import { calculateLeadScore } from "@/lib/lead-scoring";
 import { sendEmailNotification, sendHotLeadNotification, sendWarmLeadNotification } from "@/lib/email-notifications";
 import { calculateLeadScoreDynamic } from "@/lib/lead-scoring-dynamic";
+import { checkGoogleCalendarSlot, createGoogleCalendarEvent, getAlternativeSlots, getOrgGoogleAuth } from "@/lib/appointments/google-calendar";
 
 const openrouter = createOpenRouter({
     apiKey: process.env.OPENROUTER_API_KEY,
@@ -97,7 +98,9 @@ try {
                 id: sessionId,
                 chatbot_id: widgetId,
                 visitor_ip: ip,
-                name: visitorName
+                name: visitorName,
+                organization_id: orgId,
+                is_human_takeover: false, // Default to bot mode
             });
         } catch (convError: any) {
             // If conversation already exists (race condition), that's fine
@@ -128,6 +131,39 @@ try {
             content: lastMessage.content,
         });
     }
+
+    // ========================================
+    // 🚨 HUMAN TAKEOVER CHECK
+    // ========================================
+    const [currentConv] = await db
+        .select()
+        .from(conversation)
+        .where(eq(conversation.id, sessionId))
+        .limit(1);
+
+    if (currentConv?.is_human_takeover) {
+        console.log(`[HUMAN MODE] Conversation ${sessionId} is in human takeover. Bot skipping.`);
+        
+        // Optional: Notify human agents via webhook/email
+        // await notifyAgentOfNewMessage(orgId, sessionId, lastMessage.content);
+        
+        return NextResponse.json({ 
+            response: "",
+            mode: 'human_takeover',
+            message: 'Message saved. Awaiting human response.'
+        });
+    }
+
+    // Check if bot is globally disabled for this chatbot
+    if (chatbotConfig.bot_enabled === false) {
+        console.log(`[BOT DISABLED] Chatbot ${widgetId} has bot disabled globally.`);
+        return NextResponse.json({ 
+            response: "",
+            mode: 'bot_disabled',
+            message: 'Bot is disabled for this chatbot.'
+        });
+    }
+
 } catch (error) {
     console.error("Database Persistence Error:", error);
     // Don't fail the whole request if persistence fails
@@ -290,6 +326,12 @@ ${context}
         status: 'open'
       });
 
+      // 🚨 AUTOMATICALLY ENABLE HUMAN TAKEOVER
+      await db
+          .update(conversation)
+          .set({ is_human_takeover: true })
+          .where(eq(conversation.id, sessionId));
+
       // 2. Send email and handle response
       const emailResult = await sendEmailNotification({
         email: user_email, 
@@ -303,11 +345,141 @@ ${context}
         // Still return success since ticket was created
       }
 
-      return { success: true, message: "Ticket created and notification sent" };
+      return { success: true, message: "Ticket created and human takeover enabled" };
     } catch (error) {
       console.error("Escalation failed:", error);
       throw new Error("Failed to escalate issue");
     }
+  }
+}),
+
+  bookAppointment: tool({
+  description: 'Books an appointment with the business',
+  inputSchema: z.object({
+    customer_name: z.string().describe('Full name of the customer'),
+    customer_email: z.string().email().describe('Email address for confirmation'),
+    customer_phone: z.string().optional().describe('Phone number for reminders'),
+    preferred_date: z.string().describe('Preferred date in YYYY-MM-DD format'),
+    preferred_time: z.string().describe('Preferred time in HH:MM format (24-hour)'),
+    service_type: z.string().describe('Type of service: demo, consultation, support, etc.'),
+    duration_minutes: z.number().default(30).describe('Duration of appointment in minutes'),
+    notes: z.string().optional().describe('Additional notes or requirements')
+  }),
+  execute: async (input) => {
+    
+    
+    if (!orgId) {
+      return { 
+        success: false, 
+        message: "Organization not identified. Please reconnect your account."
+      };
+    }
+
+    // Get organization's Google auth
+    const auth = await getOrgGoogleAuth(orgId);
+    
+    if (!auth) {
+      return { 
+        success: false, 
+        message: "Google Calendar is not connected. Please connect your calendar in settings."
+      };
+    }
+
+    // Check availability
+    const isAvailable = await checkGoogleCalendarSlot(
+      auth,
+      input.preferred_date, 
+      input.preferred_time,
+      input.duration_minutes
+    );
+    
+    if (!isAvailable) {
+      // Get alternative slots
+      const alternatives = await getAlternativeSlots(
+        auth,
+        input.preferred_date,
+        input.preferred_time,
+        input.duration_minutes
+      );
+      
+      const altMessage = alternatives.length > 0 
+        ? `Here are some alternative times:\n${alternatives.slice(0, 3).map(alt => `• ${alt.date} at ${alt.time}`).join('\n')}`
+        : "No alternative times available today. Please try a different date.";
+      
+      return { 
+        success: false, 
+        message: `That time slot is not available. ${altMessage}`,
+        alternatives: alternatives.slice(0, 3)
+      };
+    }
+    
+    // Create event
+    const startDateTime = new Date(`${input.preferred_date}T${input.preferred_time}:00`);
+    const endDateTime = new Date(startDateTime.getTime() + input.duration_minutes * 60000);
+    
+    const event = await createGoogleCalendarEvent(auth, {
+      summary: `${input.service_type} - ${input.customer_name}`,
+      description: `Customer: ${input.customer_name}\nPhone: ${input.customer_phone || 'Not provided'}\nService: ${input.service_type}\nNotes: ${input.notes || 'None'}`,
+      start: startDateTime,
+      end: endDateTime,
+      attendees: [{ email: input.customer_email, displayName: input.customer_name }],
+      customerEmail: input.customer_email,
+      customerName: input.customer_name,
+      customerPhone: input.customer_phone,
+      serviceType: input.service_type
+    });
+    
+    
+    
+    // Save to DB
+    await db.insert(appointments).values({
+      id: crypto.randomUUID(),
+      organization_id: orgId,
+      conversation_id: null,
+      customer_email: input.customer_email,
+      customer_name: input.customer_name,
+      customer_phone: input.customer_phone,
+      service_type: input.service_type,
+      google_event_id: event.id,
+      google_meet_link: event.hangoutLink,
+      scheduled_at: startDateTime,
+      duration_minutes: input.duration_minutes.toString(),
+      status: 'confirmed',
+      created_at: new Date(),
+      notes: input.notes
+    });
+    
+    // Format date/time for display
+    const formattedDate = new Date(startDateTime).toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    
+    const formattedTime = new Date(startDateTime).toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+    
+    const responseMessage = event.hangoutLink 
+      ? `✅ **Appointment Confirmed!**\n\n📅 **Date:** ${formattedDate}\n⏰ **Time:** ${formattedTime}\n⏱️ **Duration:** ${input.duration_minutes} minutes\n📧 **Confirmation sent to:** ${input.customer_email}\n\n🔗 **Google Meet Link:** ${event.hangoutLink}\n📅 **Add to Calendar:** ${event.htmlLink}`
+      : `✅ **Appointment Confirmed!**\n\n📅 **Date:** ${formattedDate}\n⏰ **Time:** ${formattedTime}\n⏱️ **Duration:** ${input.duration_minutes} minutes\n📧 **Confirmation sent to:** ${input.customer_email}\n\n📅 **View in Calendar:** ${event.htmlLink}`;
+    
+    return { 
+      success: true, 
+      message: responseMessage,
+      details: {
+        confirmationNumber: event.id.slice(0, 8),
+        date: input.preferred_date,
+        time: input.preferred_time,
+        duration: `${input.duration_minutes} minutes`,
+        customer_email: input.customer_email,
+        event_link: event.htmlLink,
+        meet_link: event.hangoutLink
+      }
+    };
   }
 })
 
@@ -342,7 +514,6 @@ ${context}
         );
     }
 }
-
 
 // If it is to be a very production ready, we will need to implement message broker, event-driven architecture..., caching etc.
 
