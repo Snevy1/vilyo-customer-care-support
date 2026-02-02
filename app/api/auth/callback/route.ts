@@ -2,7 +2,7 @@
 import { db } from "@/db/client";
 import scalekit from "@/lib/scalekit";
 import { NextRequest, NextResponse } from "next/server";
-import { user as User } from "@/db/schema";
+import { organizations, user as User } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { createClient } from '@supabase/supabase-js';
 
@@ -44,6 +44,22 @@ export async function GET(req: NextRequest) {
     if (!organizationId) {
       return NextResponse.json({ error: "No organization ID found" }, { status: 500 });
     }
+
+
+  
+// We use onConflictDoNothing so we don't crash if  organization id it's already there
+await db.insert(organizations)
+  .values({
+    id: organizationId,
+    name: (claims as any).organization_name || "My Business",
+    email: user.email, 
+    owner_email: user.email,
+    timezone: 'UTC' 
+  })
+  .onConflictDoUpdate({
+    target: organizations.id,
+    set: { updated_at: new Date() }
+  });
 
     // Name parsing
     const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -100,7 +116,7 @@ if (usersError) {
       supabaseUserId = sbUser.user?.id;
     }
 
-    // Update your existing Drizzle User table (keep this as it's separate)
+    // Update  existing Drizzle User table (keep this as it's separate)
     const existing = await db.select().from(User).where(eq(User.email, user.email));
 
     if (existing.length === 0) {

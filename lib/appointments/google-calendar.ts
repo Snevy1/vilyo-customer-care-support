@@ -7,138 +7,138 @@ import { googleCalendarConnections,organizations } from '@/db/schema';
 
 export async function getOrgGoogleAuth(orgId: string): Promise<OAuth2Client | null> {
   try {
-    // First check if organization exists
-    const org = await db.select()
-      .from(organizations)
-      .where(eq(organizations.id, orgId))
-      .limit(1);
-    
-    if (!org[0]) {
-      console.error(`Organization ${orgId} not found`);
-      return null;
-    }
+    const org = await db.query.organizations.findFirst({
+      where: eq(organizations.id, orgId),
+      with: { googleConnection: true }
+    });
 
-    // Get stored credentials with join to ensure org exists
+    // Fallback if no relation is defined:
     const connection = await db.select()
       .from(googleCalendarConnections)
       .where(eq(googleCalendarConnections.organization_id, orgId))
       .limit(1);
-    
-    if (!connection[0]) {
-      console.log(`No Google Calendar connection found for org ${orgId}`);
-      return null;
-    }
-    
+
+    if (!connection[0]) return null;
+
     const oauth2Client = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID!,
-      process.env.GOOGLE_CLIENT_SECRET!,
-      process.env.GOOGLE_REDIRECT_URI!
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/google/callback`
     );
-    
-    // Handle null/undefined tokens safely
+
     oauth2Client.setCredentials({
-      access_token: connection[0].access_token || undefined,
-      refresh_token: connection[0].refresh_token || undefined,
-      expiry_date: connection[0].expiry_date || undefined,
-      scope: connection[0].scope || undefined
+      access_token: connection[0].access_token,
+      refresh_token: connection[0].refresh_token,
+      expiry_date: connection[0].expiry_date,
     });
-    
-    // Check if token needs refreshing
-    if (connection[0].expiry_date && Date.now() > connection[0].expiry_date - 60000) {
-      try {
-        const { credentials } = await oauth2Client.refreshAccessToken();
-        
-        // Update database with new tokens
-        await db.update(googleCalendarConnections)
-          .set({
-            access_token: credentials.access_token || null,
-            refresh_token: credentials.refresh_token || null,
-            expiry_date: credentials.expiry_date || null,
-            updated_at: new Date()
-          })
-          .where(eq(googleCalendarConnections.id, connection[0].id));
-        
-        oauth2Client.setCredentials(credentials);
-      } catch (refreshError) {
-        console.error('Failed to refresh token:', refreshError);
-        return null;
+
+    // Automatically update DB when Google refreshes the token
+    oauth2Client.on('tokens', async (tokens) => {
+      const updateData: any = {
+        access_token: tokens.access_token,
+        expiry_date: tokens.expiry_date,
+        updated_at: new Date(),
+      };
+      
+      // Only update refresh_token if Google provides a new one
+      if (tokens.refresh_token) {
+        updateData.refresh_token = tokens.refresh_token;
       }
-    }
-    
+
+      await db.update(googleCalendarConnections)
+        .set(updateData)
+        .where(eq(googleCalendarConnections.organization_id, orgId));
+    });
+
     return oauth2Client;
   } catch (error) {
-    console.error('Error getting org Google auth:', error);
+    console.error('Auth Retrieval Error:', error);
     return null;
   }
 }
 
+
+
+/**
+ * Checks a specific slot for availability
+ * Note: Added 'timezone' parameter to avoid hardcoding Nairobi
+ */
 export async function checkGoogleCalendarSlot(
   auth: OAuth2Client,
   date: string,
   time: string,
+  timezone: string,
   durationMinutes: number = 30
 ): Promise<boolean> {
   try {
     const calendar = google.calendar({ version: 'v3', auth });
-    
     const start = new Date(`${date}T${time}:00`);
     const end = new Date(start.getTime() + durationMinutes * 60000);
-    
+
     const response = await calendar.freebusy.query({
       requestBody: {
         timeMin: start.toISOString(),
         timeMax: end.toISOString(),
-        timeZone: 'Africa/Nairobi',
+        timeZone: timezone || "Africa/Nairobi",
         items: [{ id: 'primary' }]
       }
     });
-    
+
     const busy = response.data.calendars?.primary?.busy || [];
     return busy.length === 0;
   } catch (error) {
-    console.error('Error checking calendar slot:', error);
+    console.error('Availability Check Error:', error);
     return false;
   }
 }
 
+/**
+ 
+ * Fetches free/busy for the whole day in ONE call to prevent rate limits.
+ */
 export async function getAlternativeSlots(
   auth: OAuth2Client,
   date: string,
-  time: string,
+  timezone: string,
   durationMinutes: number = 30
 ): Promise<Array<{ date: string; time: string }>> {
-  const alternatives: Array<{ date: string; time: string }> = [];
   const calendar = google.calendar({ version: 'v3', auth });
+  const startOfDay = new Date(`${date}T00:00:00Z`);
+  const endOfDay = new Date(`${date}T23:59:59Z`);
+
+  const response = await calendar.freebusy.query({
+    requestBody: {
+      timeMin: startOfDay.toISOString(),
+      timeMax: endOfDay.toISOString(),
+      timeZone: timezone,
+      items: [{ id: 'primary' }]
+    }
+  });
+
+  const busySlots = response.data.calendars?.primary?.busy || [];
+  const alternatives: Array<{ date: string; time: string }> = [];
   
-  // Check same day at different times
-  const baseDate = new Date(`${date}T00:00:00`);
-  const requestedTime = new Date(`${date}T${time}:00`);
-  
-  // Check ±1 hour, ±2 hours, next day same time
-  const offsets = [-120, -90, -60, -30, 30, 60, 90, 120, 1440]; // In minutes
-    
-  for (const offset of offsets) {
-    const slotTime = new Date(requestedTime.getTime() + offset * 60000);
-    
-    // Skip if slot is outside business hours (e.g., 9 AM - 5 PM)
-    const hour = slotTime.getHours();
-    if (hour < 9 || hour > 17) continue;
-    
-    const isAvailable = await checkGoogleCalendarSlot(
-      auth,
-      slotTime.toISOString().split('T')[0],
-      slotTime.toISOString().split('T')[1].slice(0, 5),
-      durationMinutes
-    );
-    
-    if (isAvailable) {
-      alternatives.push({
-        date: slotTime.toISOString().split('T')[0],
-        time: slotTime.toISOString().split('T')[1].slice(0, 5)
+  // Logic: Check every hour from 9 AM to 5 PM
+  for (let hour = 9; hour <= 17; hour++) {
+    const candidate = new Date(`${date}T${hour.toString().padStart(2, '0')}:00:00`);
+    const candidateEnd = new Date(candidate.getTime() + durationMinutes * 60000);
+
+    // Check if candidate overlaps with any busy slot
+    const isBusy = busySlots.some(busy => {
+      const bStart = new Date(busy.start!);
+      const bEnd = new Date(busy.end!);
+      return (candidate < bEnd && candidateEnd > bStart);
+    });
+
+    if (!isBusy) {
+      alternatives.push({ 
+        date, 
+        time: `${hour.toString().padStart(2, '0')}:00` 
       });
     }
+    if (alternatives.length >= 3) break;
   }
-  
+
   return alternatives;
 }
 
@@ -157,38 +157,32 @@ function safeString(value: string | null | undefined): string | undefined {
   return value === null ? undefined : value;
 }
 
+/**
+ * Creates the Google Calendar Event with Meet Link
+ */
 export async function createGoogleCalendarEvent(
   auth: OAuth2Client,
+  timezone: string,
   details: {
     summary: string;
     description: string;
     start: Date;
     end: Date;
     attendees: Array<{ email: string; displayName?: string }>;
-    customerEmail: string;
-    customerName: string;
-    customerPhone?: string;
-    serviceType: string;
   }
-): Promise<GoogleEventResponse> {
+) {
   const calendar = google.calendar({ version: 'v3', auth });
-  
-  try {
-    const event: calendar_v3.Schema$Event = {
+
+  const response = await calendar.events.insert({
+    calendarId: 'primary',
+    conferenceDataVersion: 1,
+    sendUpdates: 'all',
+    requestBody: {
       summary: details.summary,
       description: details.description,
-      start: {
-        dateTime: details.start.toISOString(),
-        timeZone: 'Africa/Nairobi'
-      },
-      end: {
-        dateTime: details.end.toISOString(),
-        timeZone: 'Africa/Nairobi'
-      },
-      attendees: details.attendees.map(attendee => ({
-        email: attendee.email,
-        displayName: attendee.displayName || undefined
-      })),
+      start: { dateTime: details.start.toISOString(), timeZone: timezone },
+      end: { dateTime: details.end.toISOString(), timeZone: timezone },
+      attendees: details.attendees,
       conferenceData: {
         createRequest: {
           requestId: crypto.randomUUID(),
@@ -197,61 +191,12 @@ export async function createGoogleCalendarEvent(
       },
       reminders: {
         useDefault: false,
-        overrides: [
-          { method: 'email', minutes: 24 * 60 }, // 1 day before
-          { method: 'popup', minutes: 30 } // 30 minutes before
-        ]
-      },
-      guestsCanModify: false,
-      guestsCanInviteOthers: false,
-      guestsCanSeeOtherGuests: false
-    };
-    
-    const response = await calendar.events.insert({
-      calendarId: 'primary',
-      conferenceDataVersion: 1,
-      sendUpdates: 'all',
-      requestBody: event
-    });
-    
-    // Type-safe extraction of event data with null handling
-    const eventData = response.data;
-    
-    if (!eventData.id) {
-      throw new Error('Event ID is missing from Google Calendar response');
+        overrides: [{ method: 'email', minutes: 1440 }, { method: 'popup', minutes: 30 }]
+      }
     }
-    
-    // Safely extract properties with null handling
-    const safeId = safeString(eventData.id);
-    const safeHtmlLink = safeString(eventData.htmlLink);
-    const safeHangoutLink = safeString(eventData.hangoutLink);
-    const safeIcalUID = safeString(eventData.iCalUID);
-    
-    if (!safeId) {
-      throw new Error('Event ID is missing from Google Calendar response');
-    }
-    
-    // Safely extract start dateTime
-    const safeStartDateTime = eventData.start?.dateTime 
-      ? safeString(eventData.start.dateTime)
-      : undefined;
-    
-    const safeEndDateTime = eventData.end?.dateTime
-      ? safeString(eventData.end.dateTime)
-      : undefined;
-    
-    return {
-      id: safeId,
-      htmlLink: safeHtmlLink || '#',
-      hangoutLink: safeHangoutLink,
-      start: safeStartDateTime ? { dateTime: safeStartDateTime } : undefined,
-      end: safeEndDateTime ? { dateTime: safeEndDateTime } : undefined,
-      icalUID: safeIcalUID
-    };
-  } catch (error) {
-    console.error('Error creating calendar event:', error);
-    throw new Error(`Failed to create calendar event: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
+  });
+
+  return response.data;
 }
 
 // Additional helper functions for Google Calendar

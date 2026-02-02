@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { boolean, index, pgTable, text, timestamp, uniqueIndex, jsonb, serial, bigint} from "drizzle-orm/pg-core";
+import { boolean, index, pgTable, text, timestamp, uniqueIndex, jsonb, serial, bigint, integer} from "drizzle-orm/pg-core";
 
  export const user = pgTable ("user", {
     id: text("id")
@@ -19,7 +19,9 @@ export const organizations = pgTable("organizations", {
     .default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
+  timezone: text('timezone').default('UTC').notNull(),
   owner_email: text("owner_email").notNull(),
+  owner_phone: text('owner_phone'),
   created_at: timestamp("created_at").default(sql`now()`),
   updated_at: timestamp("updated_at").default(sql`now()`),
 }, (table) => ({
@@ -368,7 +370,7 @@ export const appointments = pgTable("appointments", {
 // Database schema for storing Google OAuth tokens
 export const googleCalendarConnections = pgTable('google_calendar_connections', {
   id: text("id").primaryKey().default(sql`gen_random_uuid()`),
-  organization_id: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  organization_id: text('organization_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }).unique(),
   access_token: text('access_token'),
   refresh_token: text('refresh_token'),
   expiry_date: bigint('expiry_date', { mode: 'number' }),
@@ -376,5 +378,74 @@ export const googleCalendarConnections = pgTable('google_calendar_connections', 
   calendar_id: text('calendar_id').default('primary'),
   email: text('email'),
   created_at: timestamp('created_at').defaultNow(),
+  updated_at: timestamp('updated_at').defaultNow(),
+});
+
+
+// === Notification handling=====
+
+
+
+// =====================================================
+// WEBHOOK LOGS
+// =====================================================
+export const webhookLogs = pgTable('webhook_logs', {
+  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+  org_id: text('org_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  url: text('url').notNull(),
+  status: text('status', { enum: ['pending', 'delivered', 'failed', 'error'] }).notNull(),
+  status_code: integer('status_code'),
+  response_time: integer('response_time'), // in milliseconds
+  error_message: text('error_message'),
+  payload: jsonb('payload'),
+  created_at: timestamp('created_at').defaultNow(),
+});
+
+// =====================================================
+// NOTIFICATION LOGS (For Auditing)
+// =====================================================
+export const notificationLogs = pgTable('notification_logs', {
+  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+  org_id: text('org_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  event_type: text('event_type').notNull(),
+  title: text('title').notNull(),
+  message: text('message').notNull(),
+  channels: text('channels').array().notNull(), // Stores ['sms', 'email', etc]
+  created_at: timestamp('created_at').defaultNow(),
+});
+
+// =====================================================
+// NOTIFICATION SETTINGS
+// =====================================================
+export const notificationSettings = pgTable('notification_settings', {
+  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+  organization_id: text('organization_id')
+    .notNull()
+    .unique()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  
+  // Toggle Controls
+  email_enabled: boolean('email_enabled').default(true).notNull(),
+  sms_enabled: boolean('sms_enabled').default(false).notNull(),
+  webhook_enabled: boolean('webhook_enabled').default(false).notNull(),
+  
+  // Contact Overrides
+  notification_phone: text('notification_phone'), 
+  notification_email: text('notification_email'),
+  
+  // Webhook Specifics
+  webhook_url: text('notification_webhook'),
+  webhook_template: text('webhook_template').default('generic'), // 'slack' | 'discord' | 'generic'
+  webhook_verification_status: text('webhook_verification_status').default('unverified'),
+  webhook_last_delivered_at: timestamp('webhook_last_delivered_at'),
+  
+  // Circuit Breaker Fields (Critical for the worker logic)
+  webhook_failure_count: integer('webhook_failure_count').default(0).notNull(),
+  webhook_retry_at: timestamp('webhook_retry_at'), // When the circuit breaker allows trying again
+  
   updated_at: timestamp('updated_at').defaultNow(),
 });

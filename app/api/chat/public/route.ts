@@ -1,20 +1,21 @@
 import { NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 import { db } from "@/db/client";
-import { conversation, knowledge_source, chatBotMetadata, supportTickets, appointments } from "@/db/schema";
+import { conversation, knowledge_source, chatBotMetadata, supportTickets, appointments, organizations } from "@/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { messages as messagesTable } from "@/db/schema";
 import { countConversationTokens } from "@/lib/countConversationTokens";
 import { summarizeConversation } from "@/lib/openAI";
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { generateText, tool, stepCountIs, ToolSet } from 'ai';
-import { email, z } from 'zod';
+import {  z } from 'zod';
 import { createClient } from '@supabase/supabase-js';
 import { checkRateLimit } from "@/lib/rate-limiter";
 import { calculateLeadScore } from "@/lib/lead-scoring";
 import { sendEmailNotification, sendHotLeadNotification, sendWarmLeadNotification } from "@/lib/email-notifications";
 import { calculateLeadScoreDynamic } from "@/lib/lead-scoring-dynamic";
 import { checkGoogleCalendarSlot, createGoogleCalendarEvent, getAlternativeSlots, getOrgGoogleAuth } from "@/lib/appointments/google-calendar";
+import { notifyOwner } from "@/lib/notifications/notifications";
 
 const openrouter = createOpenRouter({
     apiKey: process.env.OPENROUTER_API_KEY,
@@ -57,7 +58,27 @@ export async function POST(req: Request) {
         );
     }
 
-    let { messages, knowledge_source_ids } = await req.json();
+    const requestSchema = z.object({
+       messages: z.array(z.object({
+           role: z.enum(['user', 'assistant', 'system']),
+           content: z.string()
+       })),
+       knowledge_source_ids: z.array(z.string()).optional()
+   });
+   
+   const body = await req.json().catch(() => null);
+   if (!body) {
+       return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+   }
+   
+   const parsed = requestSchema.safeParse(body);
+   if (!parsed.success) {
+       return NextResponse.json({ error: "Invalid request format" }, { status: 400 });
+   }
+   
+   let { messages, knowledge_source_ids } = parsed.data;
+
+    // let { messages, knowledge_source_ids } = await req.json();
     const lastMessage = messages[messages.length - 1];
 
     // Fetch chatbot config for organization_id
@@ -144,8 +165,20 @@ try {
     if (currentConv?.is_human_takeover) {
         console.log(`[HUMAN MODE] Conversation ${sessionId} is in human takeover. Bot skipping.`);
         
-        // Optional: Notify human agents via webhook/email
-        // await notifyAgentOfNewMessage(orgId, sessionId, lastMessage.content);
+        
+       try {
+       await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/socket/emit`, {
+           method: 'POST',
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify({
+               event: `org_${orgId}_escalation`,
+               payload: { sessionId, reason: 'Human takeover', user_message: lastMessage.content }
+           })
+       });
+   } catch (socketError) {
+       console.error('Socket emit failed:', socketError);
+       // Don't throw - this is non-critical
+   }
         
         return NextResponse.json({ 
             response: "",
@@ -199,34 +232,23 @@ try {
         }
     }
 
-    const systemPrompt = `Your name is Fiona. You are a friendly, human-like customer support specialist.
+    const systemPrompt = `Your name is Fiona, a friendly customer support specialist.
 
-CRITICAL RULES:
-- If asked for your name, always respond with "I'm Fiona".
-- If asked for your role, always respond with "I'm a customer support specialist."
-- Keep answers EXTREMELY SHORT (max 1-2 sentences) and conversational.
-- If the user asks a broad question, DO NOT provide a summary. Instead, ask a friendly clarifying question to understand exactly what they need help with.
-- Never dump information. Always conversationally guide the user to the specific answer they need.
-- Mirror the user's brevity.
+CRITICAL PROTOCOLS:
+1. LEAD-FIRST BOOKING: Before calling 'bookAppointment', you MUST call 'createLead' first. Get name/email, save to CRM, then book.
+2. PROACTIVE CAPTURE: If user asks about pricing, demos,  services, expresses interest in a product or wants someone to contact them, get their details and call 'createLead' immediately. Extract intent keywords like "pricing", "demo", "buy".- **IMPORTANT**: When calling 'createLead', analyze the conversation and extract 'intent_keywords' - phrases like "pricing", "demo", "buy", "interested in", etc. Pass these in the intent_keywords array.
+3. ESCALATION: If you don't know the answer or user is unhappy, ask: "Would you like me to create a support ticket?" If yes, get their details name/email/phone(mostly both), call 'createLead', then MUST call 'escalateIssue'. Reply: "[ESCALATED] Support ticket created. Our team will review your case."
+4. ERROR HANDLING: If any tool fails, apologize gracefully: "I'm having trouble with [system], but I've saved your details and our team will follow up manually!"
 
-ESCALATION PROTOCOL:
-- If you simply DON'T KNOW the answer from the context, or if the user indicates they are unhappy, ask: "Would you like me to create a support ticket for your specific case?"
-- If the user says "Yes" or gives permission to create a ticket, ask them their name and email/phone number. Once they provide their details use the 'createLead' tool to save them to the CRM.
-- Wait for successful creation of the lead or lack thereof and then MUST call the 'escalateIssue' tool before responding to the user.
-- Your reply MUST be: "[ESCALATED] I have created a support ticket. Our specialist team will review your case."
-
-LEAD GENERATION PROTOCOL:
-- If a user expresses interest in a product, asks for a demo, or wants someone to contact them, ask for their name and email.
-- **IMPORTANT**: When calling 'createLead', analyze the conversation and extract 'intent_keywords' - phrases like "pricing", "demo", "buy", "interested in", etc. Pass these in the intent_keywords array.
-- Once they provide their details, use the 'createLead' tool to save them to the CRM.
-- After the tool confirms success, tell the user: "I've passed your details to our team. They'll reach out soon!"
+STYLE: Max 1-2 sentences. Be proactive and conversational.
 
 Context:
-${context}
-`;
+${context}`;
 
-    // --- VERCEL AI SDK WITH CRM TOOL ---
-    try {
+
+
+    // --- VERCEL AI SDK WITH CRM, BOOKING AND ESCALATION TOOLS ---
+   try {
         const MAX_TOOL_STEPS = 5;
 
         const tools = {
@@ -269,7 +291,11 @@ ${context}
             
             if (error) {
                 console.error("CRM Insert Error:", error);
-                throw error;
+                return {
+                    success: false,
+                    message: "I'm having trouble saving your information to our system right now. But don't worry - I've noted your details and our team will reach out to you manually!",
+                    error_type: "database_error"
+                };
             }
             
             console.log(`Lead scored: ${leadScoreResult.score}/100 (${leadScoreResult.quality})`);
@@ -278,23 +304,47 @@ ${context}
             
             // Send notifications based on quality
             if (leadScoreResult.quality === 'hot') {
-                await sendHotLeadNotification({
-                    organizationEmail: user_email,
-                    leadName: `${first_name} ${last_name}`,
-                    leadEmail: email,
-                    leadPhone: phoneNumber || 'Not provided',
-                    notes,
-                    score: leadScoreResult.score,
-                    reasoning: leadScoreResult.reasoning,
-                    sessionId,
-                });
+                try {
+                    await sendHotLeadNotification({
+                        organizationEmail: user_email,
+                        leadName: `${first_name} ${last_name}`,
+                        leadEmail: email,
+                        leadPhone: phoneNumber || 'Not provided',
+                        notes,
+                        score: leadScoreResult.score,
+                        reasoning: leadScoreResult.reasoning,
+                        sessionId,
+                    });
+
+                    await notifyOwner({
+           orgId,
+           type: 'LEAD_GENERATED',
+           title: '🔥 Hot Lead Captured!',
+           message: `${first_name} ${last_name} (${email}) - Score: ${leadScoreResult.score}/100`,
+           data: {
+               lead_name: `${first_name} ${last_name}`,
+               email,
+               phone: phoneNumber,
+               score: leadScoreResult.score,
+               reasoning: leadScoreResult.reasoning,
+           }
+       });
+                } catch (notifError) {
+                    console.error("Hot lead notification failed:", notifError);
+                    // Continue - lead was saved successfully
+                }
             } else if (leadScoreResult.quality === 'warm') {
-                await sendWarmLeadNotification({
-                    organizationEmail: user_email,
-                    leadName: `${first_name} ${last_name}`,
-                    leadEmail: email,
-                    score: leadScoreResult.score,
-                });
+                try {
+                    await sendWarmLeadNotification({
+                        organizationEmail: user_email,
+                        leadName: `${first_name} ${last_name}`,
+                        leadEmail: email,
+                        score: leadScoreResult.score,
+                    });
+                } catch (notifError) {
+                    console.error("Warm lead notification failed:", notifError);
+                    // Continue - lead was saved successfully
+                }
             }
             
             return { 
@@ -305,7 +355,11 @@ ${context}
             };
         } catch (error) {
             console.error("Lead creation failed:", error);
-            throw new Error("Failed to save lead");
+            return {
+                success: false,
+                message: "I'm having trouble connecting to our CRM right now. However, I've noted your interest and our team will follow up with you shortly!",
+                error_type: "crm_failure"
+            };
         }
     }
 }),
@@ -333,22 +387,31 @@ ${context}
           .where(eq(conversation.id, sessionId));
 
       // 2. Send email and handle response
-      const emailResult = await sendEmailNotification({
-        email: user_email, 
-        reason, 
-        user_message, 
-        sessionId
-      });
+      try {
+          const emailResult = await sendEmailNotification({
+            email: user_email, 
+            reason, 
+            user_message, 
+            sessionId
+          });
 
-      if (emailResult.message === "error") {
-        console.error("Email notification failed for escalation:", sessionId);
-        // Still return success since ticket was created
+          if (emailResult.message === "error") {
+            console.error("Email notification failed for escalation:", sessionId);
+            // Still return success since ticket was created
+          }
+      } catch (emailError) {
+          console.error("Email notification error:", emailError);
+          // Continue - ticket was still created
       }
 
       return { success: true, message: "Ticket created and human takeover enabled" };
     } catch (error) {
       console.error("Escalation failed:", error);
-      throw new Error("Failed to escalate issue");
+      return {
+          success: false,
+          message: `I'm having trouble creating a support ticket right now, but I want to make sure you get help. Could you please email our support team directly at ${user_email}? I apologize for the inconvenience!`,
+          error_type: "escalation_failure"
+      };
     }
   }
 }),
@@ -366,76 +429,93 @@ ${context}
     notes: z.string().optional().describe('Additional notes or requirements')
   }),
   execute: async (input) => {
-    
-    
-    if (!orgId) {
+   try {
+     if (!orgId) {
       return { 
-        success: false, 
-        message: "Organization not identified. Please reconnect your account."
+          success: false, 
+          message: "I'm having trouble identifying your organization. I've saved your details though, and someone will reach out to schedule your appointment!",
+          error_type: "org_not_found"
       };
     }
 
-    // Get organization's Google auth
+    // 1. Fetch Org and Timezone
+    const org = await db.query.organizations.findFirst({
+      where: eq(organizations.id, orgId),
+    });
+
+    if (!org) {
+        return { 
+            success: false, 
+            message: "I'm having trouble accessing organization settings. Don't worry - I've saved your information and our team will contact you to schedule manually!",
+            error_type: "org_fetch_failed"
+        };
+    }
+    const timezone = org.timezone || 'UTC'; 
+
+    // 2. Get organization's Google auth
     const auth = await getOrgGoogleAuth(orgId);
-    
     if (!auth) {
       return { 
         success: false, 
-        message: "Google Calendar is not connected. Please connect your calendar in settings."
+        message: "Our calendar system isn't connected right now. I've saved your details and our team will reach out to schedule your appointment manually!",
+        error_type: "calendar_not_connected"
       };
     }
 
-    // Check availability
+    // 3. Check availability using the Org's timezone
     const isAvailable = await checkGoogleCalendarSlot(
       auth,
       input.preferred_date, 
       input.preferred_time,
+      timezone,
       input.duration_minutes
     );
     
     if (!isAvailable) {
-      // Get alternative slots
-      const alternatives = await getAlternativeSlots(
-        auth,
-        input.preferred_date,
-        input.preferred_time,
-        input.duration_minutes
-      );
       
-      const altMessage = alternatives.length > 0 
-        ? `Here are some alternative times:\n${alternatives.slice(0, 3).map(alt => `• ${alt.date} at ${alt.time}`).join('\n')}`
-        : "No alternative times available today. Please try a different date.";
-      
-      return { 
-        success: false, 
-        message: `That time slot is not available. ${altMessage}`,
-        alternatives: alternatives.slice(0, 3)
-      };
+      try {
+          const alternatives = await getAlternativeSlots(
+            auth,
+            input.preferred_date,
+            timezone,
+            input.duration_minutes
+          );
+          
+          const altMessage = alternatives.length > 0 
+            ? `I'm sorry, that time is taken. How about one of these?\n${alternatives.map(alt => `• ${alt.time}`).join('\n')}`
+            : "That slot is unavailable. Could you try a different date?";
+          
+          return { 
+            success: false, 
+            message: altMessage,
+            alternatives
+          };
+      } catch (altError) {
+          console.error("Alternative slots fetch failed:", altError);
+          return {
+              success: false,
+              message: "That time slot appears to be taken, but I'm having trouble checking alternatives. Could you suggest a different time, or I can have our team call you to find a good slot?",
+              error_type: "availability_check_failed"
+          };
+      }
     }
     
-    // Create event
+    // 4. Create event
     const startDateTime = new Date(`${input.preferred_date}T${input.preferred_time}:00`);
     const endDateTime = new Date(startDateTime.getTime() + input.duration_minutes * 60000);
     
-    const event = await createGoogleCalendarEvent(auth, {
+    const event = await createGoogleCalendarEvent(auth, timezone, {
       summary: `${input.service_type} - ${input.customer_name}`,
-      description: `Customer: ${input.customer_name}\nPhone: ${input.customer_phone || 'Not provided'}\nService: ${input.service_type}\nNotes: ${input.notes || 'None'}`,
+      description: `Customer: ${input.customer_name}\nPhone: ${input.customer_phone || 'N/A'}\nNotes: ${input.notes || 'None'}`,
       start: startDateTime,
       end: endDateTime,
       attendees: [{ email: input.customer_email, displayName: input.customer_name }],
-      customerEmail: input.customer_email,
-      customerName: input.customer_name,
-      customerPhone: input.customer_phone,
-      serviceType: input.service_type
     });
-    
-    
-    
-    // Save to DB
+
+    // 5. Save to DB
     await db.insert(appointments).values({
       id: crypto.randomUUID(),
       organization_id: orgId,
-      conversation_id: null,
       customer_email: input.customer_email,
       customer_name: input.customer_name,
       customer_phone: input.customer_phone,
@@ -445,41 +525,45 @@ ${context}
       scheduled_at: startDateTime,
       duration_minutes: input.duration_minutes.toString(),
       status: 'confirmed',
-      created_at: new Date(),
       notes: input.notes
     });
     
-    // Format date/time for display
-    const formattedDate = new Date(startDateTime).toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+    // 6. Format response using Org's locale/timezone preferences
+    const formattedTime = startDateTime.toLocaleTimeString('en-US', {
+      hour: 'numeric', minute: '2-digit', hour12: true, timeZone: timezone
     });
-    
-    const formattedTime = new Date(startDateTime).toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
+
+
+     await notifyOwner({
+                        orgId,
+                  type: 'APPOINTMENT_BOOKED',
+                  title: "📅 New Appointment!",
+                 message: `${input.customer_name} booked a ${input.service_type} for ${formattedTime}`,
+                 data: {
+                 customer: input.customer_name,
+                 time: formattedTime,
+                 meet_link: event.hangoutLink
+                  }
     });
-    
-    const responseMessage = event.hangoutLink 
-      ? `✅ **Appointment Confirmed!**\n\n📅 **Date:** ${formattedDate}\n⏰ **Time:** ${formattedTime}\n⏱️ **Duration:** ${input.duration_minutes} minutes\n📧 **Confirmation sent to:** ${input.customer_email}\n\n🔗 **Google Meet Link:** ${event.hangoutLink}\n📅 **Add to Calendar:** ${event.htmlLink}`
-      : `✅ **Appointment Confirmed!**\n\n📅 **Date:** ${formattedDate}\n⏰ **Time:** ${formattedTime}\n⏱️ **Duration:** ${input.duration_minutes} minutes\n📧 **Confirmation sent to:** ${input.customer_email}\n\n📅 **View in Calendar:** ${event.htmlLink}`;
     
     return { 
       success: true, 
-      message: responseMessage,
+      message: `✅ **Confirmed!** I've scheduled your ${input.service_type} for ${formattedTime}. A Google Meet link has been sent to ${input.customer_email}.`,
       details: {
-        confirmationNumber: event.id.slice(0, 8),
-        date: input.preferred_date,
-        time: input.preferred_time,
-        duration: `${input.duration_minutes} minutes`,
-        customer_email: input.customer_email,
-        event_link: event.htmlLink,
-        meet_link: event.hangoutLink
+        meet_link: event.hangoutLink,
+        calendar_link: event.htmlLink
       }
     };
+    
+   } catch (error) {
+    console.error("Booking Tool Error:", error);
+    return {
+      success: false,
+      message: "I encountered a technical glitch while connecting to the calendar. However, I have saved your contact info, and our team will reach out to schedule this manually!",
+      error_type: "api_failure"
+    };
+    
+   }
   }
 })
 
@@ -502,6 +586,7 @@ ${context}
             });
         } catch (error) {
             console.error("Database Persistence Error (AI):", error);
+            // Don't fail the request if we can't save to DB - user still gets response
         }
 
         return NextResponse.json({ response: result.text });

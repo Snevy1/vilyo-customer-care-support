@@ -1,38 +1,56 @@
 // components/GoogleCalendarConnect.tsx
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Calendar, Check, AlertCircle } from 'lucide-react';
+import { Calendar, Check, AlertCircle, Globe } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+
+// Common timezones for selection
+const TIMEZONES = [
+  { label: 'Nairobi (EAT)', value: 'Africa/Nairobi' },
+  { label: 'London (GMT/BST)', value: 'Europe/London' },
+  { label: 'New York (EST/EDT)', value: 'America/New_York' },
+  { label: 'Los Angeles (PST/PDT)', value: 'America/Los_Angeles' },
+  { label: 'Dubai (GST)', value: 'Asia/Dubai' },
+];
 
 export function GoogleCalendarConnect({ orgId }: { orgId: string }) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
+  const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
 
   const handleConnect = async () => {
     setIsConnecting(true);
     try {
+
+      // 1. Save the selected timezone to the Org table first
+      const tzResponse = await fetch(`/api/google/${orgId}/settings`, {
+        method: 'PATCH',
+        body: JSON.stringify({ timezone }),
+      });
+
+      if (!tzResponse.ok) throw new Error("Failed to save timezone");
       // Generate state parameter for security
       const state = crypto.randomUUID();
       
-      // Store state in session storage
-      sessionStorage.setItem('google_auth_state', state);
-      sessionStorage.setItem('google_auth_org', orgId);
+      // Set cookies via document.cookie so the server can see them later
+  document.cookie = `google_auth_state=${state}; path=/; max-age=3600; SameSite=Lax`;
+  document.cookie = `google_auth_org=${orgId}; path=/; max-age=3600; SameSite=Lax`;
       
-      // Build OAuth URL
       const params = new URLSearchParams({
-        client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
-        redirect_uri: `${window.location.origin}/api/auth/google/callback`,
-        response_type: 'code',
-        scope: 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly',
-        access_type: 'offline',
-        prompt: 'consent',
-        state
-      });
+    client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
+    redirect_uri: `${window.location.origin}/api/auth/google/callback`,
+    response_type: 'code',
+    scope: 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly',
+    access_type: 'offline',
+    prompt: 'consent',
+    state
+  });
       
-      window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+     window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
     } catch (error) {
       console.error('Error initiating OAuth:', error);
       toast.error('Failed to connect to Google Calendar');
@@ -42,7 +60,7 @@ export function GoogleCalendarConnect({ orgId }: { orgId: string }) {
 
   const handleDisconnect = async () => {
     try {
-      const response = await fetch(`/api/orgs/${orgId}/calendar/disconnect`, {
+      const response = await fetch(`/api/google/${orgId}/settings`, {
         method: 'DELETE'
       });
       
@@ -66,9 +84,9 @@ export function GoogleCalendarConnect({ orgId }: { orgId: string }) {
   };
 
   // Check connection on mount
-  useState(() => {
-    checkConnection();
-  });
+  useEffect(() => {
+  checkConnection();
+}, [orgId]); 
 
   return (
     <Card>
@@ -78,48 +96,53 @@ export function GoogleCalendarConnect({ orgId }: { orgId: string }) {
           Google Calendar Integration
         </CardTitle>
         <CardDescription>
-          Connect your Google Calendar to enable appointment booking
+          Connect your business calendar to enable AI-powered bookings.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-6">
+        {/* Timezone Selection: Critical for Multi-tenant */}
+        {!isConnected && (
+          <div className="space-y-2">
+            <label className="text-sm font-medium flex items-center gap-2">
+              <Globe className="h-4 w-4" />
+              Business Timezone
+            </label>
+            <Select value={timezone} onValueChange={setTimezone}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select timezone" />
+              </SelectTrigger>
+              <SelectContent>
+                {TIMEZONES.map((tz) => (
+                  <SelectItem key={tz.value} value={tz.value}>
+                    {tz.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-gray-500 italic">
+              AI will use this timezone to show available slots to customers.
+            </p>
+          </div>
+        )}
+
         {isConnected ? (
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-green-600">
               <Check className="h-5 w-5" />
-              <span>Connected to Google Calendar</span>
-            </div>
-            <div className="text-sm text-gray-600">
-              <p>• Appointment booking is enabled</p>
-              <p>• Events will be created in your primary calendar</p>
-              <p>• Google Meet links are automatically generated</p>
+              <span>Connected & Syncing</span>
             </div>
             <Button variant="outline" onClick={handleDisconnect}>
-              Disconnect Calendar
+              Disconnect
             </Button>
           </div>
         ) : (
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 text-amber-600">
-              <AlertCircle className="h-5 w-5" />
-              <span>Calendar not connected</span>
-            </div>
-            <div className="text-sm text-gray-600">
-              <p className="mb-2">Connect to enable features:</p>
-              <ul className="list-disc pl-5 space-y-1">
-                <li>Check real-time availability</li>
-                <li>Automatically create calendar events</li>
-                <li>Send Google Meet links to customers</li>
-                <li>Set up automatic reminders</li>
-              </ul>
-            </div>
-            <Button
-              onClick={handleConnect}
-              disabled={isConnecting}
-              className="bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
-            >
-              {isConnecting ? 'Connecting...' : 'Connect Google Calendar'}
-            </Button>
-          </div>
+          <Button
+            onClick={handleConnect}
+            disabled={isConnecting}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            {isConnecting ? 'Opening Google...' : 'Connect Google Calendar'}
+          </Button>
         )}
       </CardContent>
     </Card>
