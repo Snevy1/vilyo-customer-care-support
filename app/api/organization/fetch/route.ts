@@ -60,7 +60,8 @@ export async function GET() {
     return NextResponse.json({ 
       organization, 
       subscription,
-      connection 
+      connection,
+      WhatsappSubscription
     });
     
   } catch (error) {

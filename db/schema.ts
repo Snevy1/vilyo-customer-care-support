@@ -20,6 +20,17 @@ export const organizations = pgTable("organizations", {
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
   timezone: text('timezone').default('UTC').notNull(),
+  
+  // Web chatbot subscription fields
+  web_chat_plan: text("web_chat_plan").default("free").notNull(), // 'free', 'pro'
+  web_chat_subscription_id: text("web_chat_subscription_id"), // Paystack subscription_code
+  web_chat_status: text("web_chat_status").default("active"), // Always at least 'free'
+  web_chat_period_end: timestamp("web_chat_period_end", { withTimezone: true }),
+  web_chat_payment_method: text('web_chat_payment_method'), // Only for paid plans
+  web_chat_provider: text('web_chat_provider'), // 'stripe', 'paystack'
+  web_chat_created_at:  timestamp("web_chat_created_at", { withTimezone: true }),
+  web_chat_cancelled_at: timestamp("web_chat_cancelled_at", { withTimezone: true }),
+  web_chat_updated_at:  timestamp("web_chat_updated_at", { withTimezone: true }),
   owner_email: text("owner_email").notNull(),
   owner_phone: text('owner_phone'),
   created_at: timestamp("created_at").default(sql`now()`),
@@ -240,6 +251,7 @@ export const messages = pgTable("messages", {
     .primaryKey()
     .default(sql`gen_random_uuid()`),
   name: text("name"),
+  
   email: text("email").notNull().unique(),
   organization_id: text("organization_id").notNull(),
   kapsoCustomerId: text("kapsoCustomerId").notNull().unique(),
@@ -267,10 +279,18 @@ export const whatsAppSubscription = pgTable("whatsAppSubscription", {
   tenant_id: text("tenant_id")
     .notNull()
     .references(() => whatsAppTenant.id, { onDelete: "cascade" }),
-     organization_id: text("organization_id").notNull(),
-  status: text("status").notNull(),
-  plan_id: text("plan_id").notNull(),
+  organization_id: text("organization_id").notNull(),
+  status: text("status").notNull(), // 'active', 'past_due', 'cancelled'
+  plan_id: text("plan_id").notNull(), // Paystack plan_code for WhatsApp
+  subscription_id: text("plan_id"),
+  plan_tier: text("plan_tier"), // standard, premium;
+  provider: text("provider"), //'stripe', 'paystack'
+  paystack_subscription_id: text("paystack_subscription_id"),
+  payment_method: text('payment_method'), // Mpesa, Paystack
   current_period_end: timestamp("current_period_end", { withTimezone: true }).notNull(),
+  created_at: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
+  updated_at: timestamp("updated_at", { withTimezone: true }).default(sql`now()`),
+  cancelled_at: timestamp("cancelled_at", { withTimezone: true }).default(sql`now()`),
 },
 (table) => {
   return {
@@ -449,3 +469,45 @@ export const notificationSettings = pgTable('notification_settings', {
   
   updated_at: timestamp('updated_at').defaultNow(),
 });
+
+
+
+export const crmSubscription = pgTable("crmSubscription", {
+  id: text("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  organization_id: text("organization_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  status: text("status").notNull(), // 'active', 'past_due', 'cancelled', 'trialing'
+  plan_tier: text("plan_tier").notNull(), // 'free', 'pro'
+  plan_id: text("plan_id"), // Paystack plan_code (null for free tier)
+  paystack_subscription_id: text("paystack_subscription_id"),
+  payment_method: text('payment_method'), // 'mpesa', 'paystack', null for free
+  subscription_id: text("plan_id"),
+  provider: text("provider"), //'stripe', 'paystack'
+  // Feature limits based on tier
+  max_contacts: integer("max_contacts").notNull(), // e.g., 1000 for free, unlimited for pro
+  max_deals: integer("max_deals").notNull(),
+  
+  current_period_start: timestamp("current_period_start", { withTimezone: true }).notNull(),
+  current_period_end: timestamp("current_period_end", { withTimezone: true }).notNull(),
+  
+  created_at: timestamp("created_at").default(sql`now()`).notNull(),
+  updated_at: timestamp("updated_at").default(sql`now()`).notNull(),
+  cancelled_at: timestamp("cancelled_at"),
+},
+(table) => {
+  return {
+    orgIdx: index("crm_subscription_org_idx").on(table.organization_id),
+    statusIdx: index("crm_subscription_status_idx").on(table.status),
+    periodEndIdx: index("crm_subscription_period_end_idx").on(table.current_period_end),
+    statusPeriodIdx: index("crm_subscription_status_period_idx").on(
+      table.status,
+      table.current_period_end
+    ),
+  };
+});
+
+
+

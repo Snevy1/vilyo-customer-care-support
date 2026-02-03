@@ -1,0 +1,56 @@
+import { CancelSubscriptionParams, CreateSubscriptionParams, GetSubscriptionParams, PaymentProvider, Subscription } from "../interfaces/payment-provider.interface";
+
+import Stripe from "stripe";
+
+export class StripeProvider implements PaymentProvider {
+  readonly providerName = 'stripe';
+  
+  constructor(private config: { secretKey: string }) {
+    // Initialize Stripe with the secret key
+    this.stripe = new Stripe(this.config.secretKey);
+  }
+  
+  private stripe: Stripe;
+  
+  async createSubscription(params: CreateSubscriptionParams): Promise<Subscription> {
+    const subscription = await this.stripe.subscriptions.create({
+      customer: params.customerId,
+      items: [{ price: params.planId }],
+      metadata: params.metadata,
+      payment_behavior: 'default_incomplete',
+      payment_settings: { save_default_payment_method: 'on_subscription' },
+      expand: ['latest_invoice.payment_intent'],
+    });
+    
+    return {
+      id: subscription.id,
+      status: subscription.status,
+      currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+      customerId: subscription.customer as string,
+      planId: subscription.items.data[0].price.id,
+      provider: 'stripe',
+    };
+  }
+  
+  async cancelSubscription(params: CancelSubscriptionParams): Promise<void> {
+    await this.stripe.subscriptions.cancel(params.subscriptionId, {
+      cancellation_details: params.reason ? { comment: params.reason } : undefined,
+    });
+  }
+  
+  async getSubscription(params: GetSubscriptionParams): Promise<Subscription> {
+    const subscription = await this.stripe.subscriptions.retrieve(params.subscriptionId);
+    
+    return {
+      id: subscription.id,
+      status: subscription.status,
+      currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+      customerId: subscription.customer as string,
+      planId: subscription.items.data[0].price.id,
+      provider: 'stripe',
+    };
+  }
+}
+
+// You'll need to install Stripe: npm install stripe
+// Add type: npm install @types/stripe
