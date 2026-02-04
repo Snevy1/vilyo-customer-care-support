@@ -1,0 +1,72 @@
+// ============================================================================
+// PROVIDER SELECTION
+// ============================================================================
+
+
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Card, CardContent } from '@/components/ui/card';
+
+import { CheckCircle, AlertCircle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { PaymentProcessor } from './subscription-checkout';
+
+interface ProviderSelectionProps {
+  availableProcessors: PaymentProcessor[];
+  onSelectProvider: (provider: PaymentProcessor) => void;
+  selectedProvider: PaymentProcessor | null;
+}
+
+export const ProviderSelection: React.FC<ProviderSelectionProps> = ({
+  availableProcessors,
+  onSelectProvider,
+  selectedProvider,
+}) => {
+  if (availableProcessors.length === 0) {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          No payment methods are currently available. Please contact support.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      {availableProcessors.map((processor) => (
+        <Card
+          key={processor.id}
+          className={`cursor-pointer transition-all hover:border-primary hover:shadow-md ${
+            selectedProvider?.id === processor.id
+              ? 'border-primary ring-2 ring-primary/20'
+              : 'border-gray-200'
+          }`}
+          onClick={() => onSelectProvider(processor)}
+        >
+          <CardContent className="flex flex-col items-center p-6">
+            <div className="mb-4 flex h-16 w-16 items-center justify-center">
+              <img
+                src={processor.logoUrl}
+                alt={processor.displayName}
+                className="h-full w-full object-contain"
+                onError={(e) => {
+                  // Fallback for broken images
+                  e.currentTarget.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='64' height='64' fill='%23e5e7eb'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='12' fill='%236b7280'%3E${processor.displayName}%3C/text%3E%3C/svg%3E`;
+                }}
+              />
+            </div>
+            <h3 className="mb-2 text-center font-semibold">{processor.displayName}</h3>
+            <Badge variant="outline" className="mt-2">
+              {processor.supportedCurrencies.slice(0, 3).join(', ')}
+              {processor.supportedCurrencies.length > 3 && ' +more'}
+            </Badge>
+            {selectedProvider?.id === processor.id && (
+              <CheckCircle className="mt-3 h-5 w-5 text-primary" />
+            )}
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+};

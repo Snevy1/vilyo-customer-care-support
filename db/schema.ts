@@ -1,5 +1,10 @@
 import { sql } from "drizzle-orm";
-import { boolean, index, pgTable, text, timestamp, uniqueIndex, jsonb, serial, bigint, integer} from "drizzle-orm/pg-core";
+import { boolean, index, pgTable, text, timestamp,
+   uniqueIndex, jsonb, serial, bigint, integer,
+   pgEnum,
+  unique
+  
+  } from "drizzle-orm/pg-core";
 
  export const user = pgTable ("user", {
     id: text("id")
@@ -511,3 +516,103 @@ export const crmSubscription = pgTable("crmSubscription", {
 
 
 
+
+// ---------------- ENUMS ----------------
+export const paymentProviderEnum = pgEnum("payment_provider", [
+  "stripe",
+  "paypal",
+  "paystack",
+  "flutterwave",
+  "mpesa",
+]);
+
+export const paymentEnvironmentEnum = pgEnum("payment_environment", [
+  "production",
+  "test",
+  "sandbox",
+]);
+
+// ---------------- TABLE ----------------
+export const paymentProcessor = pgTable(
+  "payment_processor",
+  {
+    id: text("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+
+    // NULL = global processor (superadmin-owned)
+    tenant_id: text("tenant_id").references(() => whatsAppTenant.id, {
+      onDelete: "cascade",
+    }),
+
+    organization_id: text("organization_id"),
+
+    provider: paymentProviderEnum("provider").notNull(),
+
+    // e.g. stripe_prod, paystack_test_ke
+    code: text("code").notNull(),
+
+    display_name: text("display_name").notNull(),
+    logo_url: text("logo_url"),
+
+    is_enabled: boolean("is_enabled").notNull().default(false),
+
+    supported_currencies: jsonb("supported_currencies")
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+
+    environment: paymentEnvironmentEnum("environment")
+      .notNull()
+      .default("production"),
+
+    // MUST be encrypted before storing
+    credentials: jsonb("credentials").$type<{
+      iv: string;
+      content: string;
+      tag: string;
+    }>(),
+
+    metadata: jsonb("metadata"),
+
+    // -------- AUDIT --------
+    created_by: text("created_by"),
+    updated_by: text("updated_by"),
+
+    created_at: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .default(sql`now()`),
+
+    updated_at: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .default(sql`now()`)
+      .$onUpdate(() => sql`now()`),
+
+    // NEW: audit trail log (append-only JSON array of changes)
+    audit_log: jsonb("audit_log").$type<
+      {
+        changed_by: string;
+        changed_at: string; // ISO timestamp
+        changes: Record<string, { old: any; new: any }>;
+      }[]
+    >().default(sql`'[]'::jsonb`),
+
+    // -------- SOFT DELETE --------
+    deleted_at: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (table) => ({
+    uniqueProviderTenantCode: unique("payment_processor_unique").on(
+      table.provider,
+      table.tenant_id,
+      table.code
+    ),
+
+    tenantIdx: index("payment_processor_tenant_idx").on(table.tenant_id),
+    providerIdx: index("payment_processor_provider_idx").on(table.provider),
+    enabledIdx: index("payment_processor_enabled_idx").on(table.is_enabled),
+    tenantEnabledIdx: index("payment_processor_tenant_enabled_idx").on(
+      table.tenant_id,
+      table.is_enabled
+    ),
+  })
+);
