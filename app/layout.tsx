@@ -3,6 +3,8 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 // import Script from "next/script";
 
+import { Providers } from "@/components/providers/providers";
+
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
@@ -33,8 +35,12 @@ export default function RootLayout({
           </div>
           <div className="absolute inset-0 bg-linear-to-t from-[#050509] via-transparent to-transparent opacity-80" />
         </div>
+        
+          <Providers>
+            {children}
 
-        {children}
+          </Providers>
+          
 
         {/* <Script
           id="unicorn-studio"

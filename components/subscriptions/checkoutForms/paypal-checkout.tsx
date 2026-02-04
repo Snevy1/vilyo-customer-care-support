@@ -1,7 +1,7 @@
 import { PayPalButtons, usePayPalScriptReducer } from "@paypal/react-paypal-js";
 import { SubscriptionPlan, SubscriptionResponse } from "../subscription-checkout";
 import { useCallback, useRef, useState } from "react";
-import { ApiClient } from "@/lib/apiClient/apiClient";
+import { subscriptionApi } from "@/lib/apiClient/apiClient";
 import toast from "react-hot-toast";
 import { AlertCircle, Loader2, ShieldCheck } from "lucide-react";
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -38,9 +38,7 @@ export const PayPalButtonWrapper: React.FC<PayPalButtonWrapperProps> = ({
       setIsProcessing(true);
 
       // Create subscription on backend
-      const response = await ApiClient.post<{ subscriptionId: string }>(
-        '/api/subscriptions/create',
-        {
+         const response = await subscriptionApi.createCheckoutSession({
           organizationId,
           productType,
           planTier: plan.name.toLowerCase(),
@@ -52,8 +50,8 @@ export const PayPalButtonWrapper: React.FC<PayPalButtonWrapperProps> = ({
             planPrice: plan.price,
             planInterval: plan.interval,
           },
-        }
-      );
+        })
+      
 
       if (!response.subscriptionId) {
         throw new Error('Invalid response from server');
@@ -82,15 +80,12 @@ export const PayPalButtonWrapper: React.FC<PayPalButtonWrapperProps> = ({
       }
 
       // Verify subscription on backend
-      const response = await ApiClient.post<SubscriptionResponse>(
-        '/api/subscriptions/verify',
-        {
+      const response = await subscriptionApi.verifySubscription({
           subscriptionId: data.subscriptionID,
-          provider: 'paypal',
+         paymentProvider: 'paypal',
           organizationId,
           planId: plan.id,
-        }
-      );
+        });
 
       onSuccess(response);
       toast.success('Subscription activated successfully!');

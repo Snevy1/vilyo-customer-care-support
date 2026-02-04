@@ -1,12 +1,9 @@
-import { SubscriptionPlan, SubscriptionResponse } from "../subscription-checkout";
 import React, { useState, useCallback, useRef } from 'react';
-
+import { SubscriptionPlan, SubscriptionResponse } from "../subscription-checkout";
+import { subscriptionApi } from '@/lib/apiClient/apiClient'; 
 import { Button } from '@/components/ui/button';
-import {
-  useStripe,
-} from '@stripe/react-stripe-js';
+import { useStripe } from '@stripe/react-stripe-js';
 import toast from "react-hot-toast";
-import { ApiClient } from "@/lib/apiClient/apiClient";
 import { Loader2, ShieldCheck } from "lucide-react";
 
 interface StripeCheckoutFormProps {
@@ -31,7 +28,6 @@ export const StripeCheckoutForm: React.FC<StripeCheckoutFormProps> = ({
   const processingRef = useRef(false);
 
   const handleSubmit = useCallback(async () => {
-    // Prevent duplicate submissions
     if (processingRef.current) {
       toast.error('Checkout already in progress');
       return;
@@ -46,20 +42,17 @@ export const StripeCheckoutForm: React.FC<StripeCheckoutFormProps> = ({
       processingRef.current = true;
       setIsLoading(true);
 
-      // Create checkout session on backend
-      const session = await ApiClient.post<{ id: string; url?: string }>(
-        '/api/subscriptions/checkout',
-        {
-          organizationId,
-          productType,
-          planTier: plan.name.toLowerCase(),
-          provider: 'stripe',
-          planId: plan.providerPlanId,
-          tenantId,
-          successUrl: `${window.location.origin}/dashboard/finance/subscriptions?success=true&session_id={CHECKOUT_SESSION_ID}`,
-          cancelUrl: `${window.location.origin}/dashboard/finance/subscriptions?canceled=true`,
-        }
-      );
+      // Use the centralized service instead of ApiClient
+      const session = await subscriptionApi.createCheckoutSession({
+        organizationId,
+        productType,
+        planTier: plan.name.toLowerCase(),
+        paymentProvider: 'stripe',
+        planId: plan.providerPlanId,
+        tenantId,
+        successUrl: `${window.location.origin}/dashboard/finance/subscriptions?success=true&session_id={CHECKOUT_SESSION_ID}`,
+        cancelUrl: `${window.location.origin}/dashboard/finance/subscriptions?canceled=true`,
+      });
 
       if (!session.id) {
         throw new Error('Invalid checkout session received');
@@ -70,8 +63,9 @@ export const StripeCheckoutForm: React.FC<StripeCheckoutFormProps> = ({
       } else {
         throw new Error('No checkout URL received from server');
       }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to initiate checkout';
+    } catch (error: any) {
+      // Axios errors in your new paradigm will have the message extracted by the interceptor
+      const message = error.message || 'Failed to initiate checkout';
       console.error('Stripe checkout error:', error);
       onError(message);
       toast.error(message);

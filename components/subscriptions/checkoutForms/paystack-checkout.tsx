@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { SubscriptionPlan, SubscriptionResponse } from "../subscription-checkout";
 import toast from "react-hot-toast";
-import { ApiClient } from "@/lib/apiClient/apiClient";
+import { subscriptionApi } from "@/lib/apiClient/apiClient";
 import { Loader2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -35,18 +35,18 @@ export const PaystackCheckoutForm: React.FC<PaystackCheckoutFormProps> = ({
       processingRef.current = true;
       setIsLoading(true);
 
-      const response = await ApiClient.post<{ authorization_url: string; reference: string }>(
-        '/api/subscriptions/checkout',
+      const response = await  subscriptionApi.createCheckoutSession(
         {
           organizationId,
           productType,
           planTier: plan.name.toLowerCase(),
-          provider: 'paystack',
+          paymentProvider: 'paystack',
           planId: plan.providerPlanId,
           tenantId,
           callbackUrl: `${window.location.origin}/dashboard/subscriptions?provider=paystack`,
         }
-      );
+      )
+      
 
       if (!response.authorization_url) {
         throw new Error('Invalid checkout URL received');

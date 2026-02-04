@@ -18,11 +18,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, ArrowLeft, CheckCircle, AlertCircle, ShieldCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ApiClient } from '@/lib/apiClient/apiClient';
 import { ProviderSelection } from './providerSelection';
 import { StripeCheckoutForm } from './checkoutForms/stripe-checkout';
 import { PaystackCheckoutForm } from './checkoutForms/paystack-checkout';
 import { PayPalButtonWrapper } from './checkoutForms/paypal-checkout';
+import { paymentProcessorsApi } from '@/lib/apiClient/apiClient';
 
 export interface SubscriptionPlan {
   id: string;
@@ -101,9 +101,7 @@ export function SubscriptionCheckout({
         setError(null);
 
         // Fetch available processors from API with authentication
-        const data = await ApiClient.get<{ processors: PaymentProcessor[] }>(
-          '/api/payment-processors'
-        );
+        const data = await paymentProcessorsApi.PaymentProcessors()
 
         if (!isMountedRef.current) return;
 
@@ -112,7 +110,7 @@ export function SubscriptionCheckout({
         }
 
         // Filter to only enabled processors
-        const enabledProcessors = data.processors.filter((p) => p.isEnabled);
+        const enabledProcessors = data.processors.filter((p:any) => p.isEnabled);
 
         if (enabledProcessors.length === 0) {
           throw new Error('No payment methods are currently available');
@@ -121,13 +119,10 @@ export function SubscriptionCheckout({
         setProcessors(enabledProcessors);
 
         // Initialize Stripe if available
-        const stripeProcessor = enabledProcessors.find((p) => p.name === 'stripe');
+        const stripeProcessor = enabledProcessors.find((p:any) => p.name === 'stripe');
         if (stripeProcessor) {
           try {
-            const stripeKeyData = await ApiClient.get<{ publishableKey: string }>(
-              '/api/payment-processors/stripe/key'
-            );
-
+            const stripeKeyData = await  paymentProcessorsApi.StripeKey()
             if (!isMountedRef.current) return;
 
             if (stripeKeyData.publishableKey) {
@@ -139,13 +134,10 @@ export function SubscriptionCheckout({
         }
 
         // Initialize PayPal if available
-        const paypalProcessor = enabledProcessors.find((p) => p.name === 'paypal');
+        const paypalProcessor = enabledProcessors.find((p:any) => p.name === 'paypal');
         if (paypalProcessor) {
           try {
-            const paypalKeyData = await ApiClient.get<{ clientId: string }>(
-              '/api/payment-processors/paypal/client-id'
-            );
-
+            const paypalKeyData = await paymentProcessorsApi.PaypalClientId()
             if (!isMountedRef.current) return;
 
             if (paypalKeyData.clientId) {
