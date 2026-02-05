@@ -4,6 +4,7 @@ import "./globals.css";
 // import Script from "next/script";
 
 import { Providers } from "@/components/providers/providers";
+import { Toaster } from "sonner";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -38,6 +39,7 @@ export default function RootLayout({
         
           <Providers>
             {children}
+            <Toaster richColors theme="dark" closeButton />
 
           </Providers>
           

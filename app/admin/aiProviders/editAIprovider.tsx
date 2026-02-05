@@ -1,8 +1,22 @@
-import { Gear } from "@phosphor-icons/react";
-import { Button, Form, Input, Modal, Switch, message } from "antd";
+import { Settings } from "lucide-react";
 import { Circle, CloudUploadIcon, Plus, X } from "lucide-react";
 import React, { useState, useEffect, useRef } from "react";
-import { AIModel } from "@/@types/types"; 
+import { AIModel } from "@/@types/types";
+
+// shadcn/ui imports
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { toast } from "sonner"
 
 interface EditAIProviderProps {
   id: string;
@@ -19,28 +33,47 @@ export default function EditAIProvider({
 }: EditAIProviderProps) {
   const [step, setStep] = useState(1);
   const [open, setOpen] = useState(false);
-  const [form] = Form.useForm();
-  const [step1Data, setStep1Data] = useState<any>(null);
+  const [name, setName] = useState("");
+  const [apiKey, setApiKey] = useState("");
+  const [price, setPrice] = useState("");
+  const [visible, setVisible] = useState(true);
   const [fileToUpload, setFileToUpload] = useState<File | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [pros, setPros] = useState<string>("");
   const [prosAr, setProsAr] = useState<string[]>([]);
   const [cons, setCons] = useState<string>("");
   const [consAr, setConsAr] = useState<string[]>([]);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
 
   const showModal = () => {
     setOpen(true);
   };
 
-  const handleNextStep = async () => {
-    try {
-      const values = await form.validateFields();
-      setStep1Data(values);
+  const validateStep1 = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!name.trim()) {
+      newErrors.name = "Please enter AI provider name";
+    }
+    if (!apiKey.trim()) {
+      newErrors.apiKey = "Please enter API key";
+    }
+    if (!price.trim()) {
+      newErrors.price = "Please enter price";
+    } else if (!/^\d+(\.\d{1,2})?$/.test(price)) {
+      newErrors.price = "Please enter a valid price";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleNextStep = () => {
+    if (validateStep1()) {
       setStep(2);
-    } catch (error) {
-      console.error("Validation failed:", error);
     }
   };
 
@@ -56,14 +89,21 @@ export default function EditAIProvider({
       const formData = new FormData();
 
       // Add all the text data
-      const completeData = { ...step1Data, ...step2Data };
+      const completeData = {
+        name,
+        apiKey,
+        price,
+        visible,
+        ...step2Data,
+      };
+
       Object.keys(completeData).forEach((key) => {
-        if (Array.isArray(completeData[key])) {
-          formData.append(key, JSON.stringify(completeData[key]));
-        } else if (typeof completeData[key] === 'boolean') {
-          formData.append(key, completeData[key].toString());
+        if (Array.isArray(completeData[key as keyof typeof completeData])) {
+          formData.append(key, JSON.stringify(completeData[key as keyof typeof completeData]));
+        } else if (typeof completeData[key as keyof typeof completeData] === "boolean") {
+          formData.append(key, completeData[key as keyof typeof completeData].toString());
         } else {
-          formData.append(key, completeData[key]);
+          formData.append(key, completeData[key as keyof typeof completeData] as string);
         }
       });
 
@@ -73,67 +113,77 @@ export default function EditAIProvider({
       }
 
       await onUpdate(id, formData);
+
+      toast.success("Success", {
+    description: "AI provider updated successfully",
+  });
+
       
-      message.success("AI provider updated successfully");
+
       setOpen(false);
       setStep(1);
-      form.resetFields();
-      setProsAr([]);
-      setConsAr([]);
-      setPreviewImage(null);
-      setFileToUpload(null);
-      setStep1Data(null);
-      
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
+      resetForm();
     } catch (error) {
       console.error("Failed to update AI provider:", error);
-      message.error("Failed to update AI provider");
+      toast.error("Error", {
+    description: "Failed to update AI provider",
+  });
+      
+    }
+  };
+
+  const resetForm = () => {
+    setName("");
+    setApiKey("");
+    setPrice("");
+    setVisible(true);
+    setProsAr([]);
+    setConsAr([]);
+    setPreviewImage(null);
+    setFileToUpload(null);
+    setErrors({});
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
   const handleCancel = () => {
     setOpen(false);
     setStep(1);
-    form.resetFields();
-    setPreviewImage(null);
-    setFileToUpload(null);
-    setStep1Data(null);
-    setProsAr([]);
-    setConsAr([]);
-    
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
+    resetForm();
   };
 
   // Populate the form with existing data when the modal is opened
   useEffect(() => {
     if (open && provider) {
-      form.setFieldsValue({
-        name: provider.name,
-        apiKey: provider.apiKey,
-        price: provider.price,
-        visible: provider.visible,
-      });
+      setName(provider.name);
+      setApiKey(provider.apiKey);
+      setPrice(provider.price.toString());
+      setVisible(provider.visible);
       setProsAr(provider.pros || []);
       setConsAr(provider.cons || []);
       setPreviewImage(provider.logoUrl || null);
     }
-  }, [open, provider, form]);
+  }, [open, provider]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (file.size > 5 * 1024 * 1024) {
-      message.error("Image must be smaller than 5MB");
+      toast.error("Error", {
+    description: "Image must be smaller than 5MB",
+  });
+      
       return;
     }
 
     if (!file.type.startsWith("image/")) {
-      message.error("Please upload an image file");
+      toast.error("Error", {
+    description: "Please upload an image file",
+  });
+      
       return;
     }
 
@@ -146,239 +196,275 @@ export default function EditAIProvider({
 
   return (
     <>
-      <Gear size={20} className="cursor-pointer" onClick={showModal} />
+      <Settings size={20} className="cursor-pointer" onClick={showModal} />
 
-      <Modal
-        title="Edit AI Provider"
-        open={open}
-        onCancel={handleCancel}
-        footer={[
-          <div className="mt-5" key="footer-buttons">
-            <Button onClick={handleCancel} className="mr-5">
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit AI Provider</DialogTitle>
+          </DialogHeader>
+
+          {step === 1 ? (
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">
+                  AI Provider Name <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="name"
+                  placeholder="Name"
+                  value={name}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    if (errors.name) {
+                      setErrors({ ...errors, name: "" });
+                    }
+                  }}
+                  disabled={loading}
+                  className={errors.name ? "border-red-500" : ""}
+                />
+                {errors.name && (
+                  <p className="text-sm text-red-500">{errors.name}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="apiKey">
+                  API Key <span className="text-red-500">*</span>
+                </Label>
+                <Textarea
+                  id="apiKey"
+                  placeholder="API Key"
+                  value={apiKey}
+                  onChange={(e) => {
+                    setApiKey(e.target.value);
+                    if (errors.apiKey) {
+                      setErrors({ ...errors, apiKey: "" });
+                    }
+                  }}
+                  disabled={loading}
+                  rows={3}
+                  className={errors.apiKey ? "border-red-500" : ""}
+                />
+                {errors.apiKey && (
+                  <p className="text-sm text-red-500">{errors.apiKey}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="price">
+                  Price <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="price"
+                  placeholder="Price"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={price}
+                  onChange={(e) => {
+                    setPrice(e.target.value);
+                    if (errors.price) {
+                      setErrors({ ...errors, price: "" });
+                    }
+                  }}
+                  disabled={loading}
+                  className={errors.price ? "border-red-500" : ""}
+                />
+                {errors.price && (
+                  <p className="text-sm text-red-500">{errors.price}</p>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between pt-2">
+                <Label htmlFor="visible">Enable / Disable Visibility</Label>
+                <Switch
+                  id="visible"
+                  checked={visible}
+                  onCheckedChange={setVisible}
+                  disabled={loading}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-6 py-4">
+              <div className="flex flex-col">
+                <Label className="text-lg font-semibold mb-2">AI Logo</Label>
+                <div className="flex flex-col items-center py-5">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    id="imageUpload"
+                    ref={fileInputRef}
+                    className="hidden"
+                    onChange={handleFileChange}
+                    disabled={loading}
+                  />
+                  {previewImage ? (
+                    <div className="flex flex-col items-center">
+                      <img
+                        src={previewImage}
+                        alt="Preview"
+                        className="w-24 h-24 rounded-full object-cover mb-3"
+                      />
+                      <label
+                        htmlFor="imageUpload"
+                        className="cursor-pointer text-[#3838F0] flex items-center hover:underline"
+                      >
+                        <CloudUploadIcon className="h-6 w-6 mr-2" />
+                        <span>Change</span>
+                      </label>
+                    </div>
+                  ) : (
+                    <label
+                      htmlFor="imageUpload"
+                      className="flex items-center cursor-pointer text-[#3838F0] hover:underline"
+                    >
+                      <CloudUploadIcon className="h-6 w-6 mr-2" />
+                      <span>Click to Add image</span>
+                    </label>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex flex-col">
+                <Label className="text-lg font-semibold mb-2">Pros</Label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Add Benefits"
+                    value={pros}
+                    onChange={(e) => setPros(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (pros.trim() !== "") {
+                          setProsAr([...prosAr, pros]);
+                          setPros("");
+                        }
+                      }
+                    }}
+                    disabled={loading}
+                  />
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      if (pros === "") return;
+                      setProsAr([...prosAr, pros]);
+                      setPros("");
+                    }}
+                    className="bg-[#3838F0] hover:bg-[#2a2ac7]"
+                    disabled={loading}
+                  >
+                    <Plus size={16} />
+                  </Button>
+                </div>
+                <div className="mt-2 space-y-2">
+                  {prosAr.map((item, index) => (
+                    <div
+                      key={index}
+                      className="ml-1 text-black/60 flex flex-row items-center space-x-2 text-sm"
+                    >
+                      <Circle
+                        size={10}
+                        className="bg-gray-400 rounded-full mr-2"
+                      />
+                      <span className="flex-1">{item}</span>
+                      <X
+                        onClick={() => {
+                          if (loading) return;
+                          const filtered = prosAr.filter((_, idx) => idx !== index);
+                          setProsAr(filtered);
+                        }}
+                        className="bg-indigo-600 rounded-full text-white cursor-pointer hover:bg-indigo-700"
+                        size={12}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex flex-col">
+                <Label className="text-lg font-semibold mb-2">Cons</Label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Add Demerits"
+                    value={cons}
+                    onChange={(e) => setCons(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (cons.trim() !== "") {
+                          setConsAr([...consAr, cons]);
+                          setCons("");
+                        }
+                      }
+                    }}
+                    disabled={loading}
+                  />
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      if (cons === "") return;
+                      setConsAr([...consAr, cons]);
+                      setCons("");
+                    }}
+                    className="bg-[#3838F0] hover:bg-[#2a2ac7]"
+                    disabled={loading}
+                  >
+                    <Plus size={16} />
+                  </Button>
+                </div>
+                <div className="mt-2 space-y-2">
+                  {consAr.map((item, index) => (
+                    <div
+                      key={index}
+                      className="ml-1 text-black/60 flex flex-row items-center space-x-2 text-sm"
+                    >
+                      <Circle
+                        size={10}
+                        className="bg-gray-400 rounded-full mr-2"
+                      />
+                      <span className="flex-1">{item}</span>
+                      <X
+                        onClick={() => {
+                          if (loading) return;
+                          const filtered = consAr.filter((_, idx) => idx !== index);
+                          setConsAr(filtered);
+                        }}
+                        className="bg-indigo-600 rounded-full text-white cursor-pointer hover:bg-indigo-700"
+                        size={12}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={handleCancel} disabled={loading}>
               Cancel
             </Button>
             {step === 1 ? (
               <Button
-                className="text-white bg-[#3838F0] px-5"
                 onClick={handleNextStep}
+                className="bg-[#3838F0] hover:bg-[#2a2ac7] text-white"
+                disabled={loading}
               >
                 Next
               </Button>
             ) : (
               <Button
-                className="text-white bg-[#3838F0] px-5"
                 onClick={handleOk}
-                loading={loading}
+                className="bg-[#3838F0] hover:bg-[#2a2ac7] text-white"
                 disabled={loading}
               >
                 {loading ? "Saving..." : "Save AI Provider"}
               </Button>
             )}
-          </div>,
-        ]}
-      >
-        {step === 1 ? (
-          <Form form={form} layout="vertical">
-            <Form.Item
-              name="name"
-              label="AI Provider Name"
-              rules={[{ required: true, message: 'Please enter AI provider name' }]}
-            >
-              <Input className="py-2" placeholder="Name" disabled={loading} />
-            </Form.Item>
-            <Form.Item
-              name="apiKey"
-              label="API Key"
-              rules={[{ required: true, message: 'Please enter API key' }]}
-            >
-              <Input.TextArea
-                autoSize={{ minRows: 1, maxRows: 5 }}
-                className="py-2"
-                placeholder="API Key"
-                disabled={loading}
-              />
-            </Form.Item>
-            <Form.Item 
-              name="price" 
-              label="Price" 
-              rules={[
-                { required: true, message: 'Please enter price' },
-                { pattern: /^\d+(\.\d{1,2})?$/, message: 'Please enter a valid price' }
-              ]}
-            >
-              <Input 
-                className="py-2" 
-                placeholder="Price" 
-                type="number" 
-                step="0.01"
-                min="0"
-                disabled={loading}
-              />
-            </Form.Item>
-            <div className="flex justify-between mt-5">
-              <p>Enable / Disable Visibility</p>
-              <Form.Item name="visible" valuePropName="checked" noStyle>
-                <Switch disabled={loading} />
-              </Form.Item>
-            </div>
-          </Form>
-        ) : (
-          <Form layout="vertical">
-            <div className="flex flex-col">
-              <p className="text-lg font-semiBold">AI Logo</p>
-              <div className="flex flex-col items-center py-5">
-                <input
-                  type="file"
-                  accept="image/*"
-                  id="imageUpload"
-                  ref={fileInputRef}
-                  className="hidden"
-                  onChange={handleFileChange}
-                  disabled={loading}
-                />
-                {previewImage ? (
-                  <div className="flex flex-col items-center">
-                    <img
-                      src={previewImage}
-                      alt="Preview"
-                      className="w-24 h-24 rounded-full object-cover mb-3"
-                    />
-                    <label
-                      htmlFor="imageUpload"
-                      className="cursor-pointer text-[#3838F0] flex items-center hover:underline"
-                    >
-                      <CloudUploadIcon className="h-6 w-6 mr-2" />
-                      <span>Change</span>
-                    </label>
-                  </div>
-                ) : (
-                  <label
-                    htmlFor="imageUpload"
-                    className="flex items-center cursor-pointer text-[#3838F0] hover:underline"
-                  >
-                    <CloudUploadIcon className="h-6 w-6 mr-2" />
-                    <span>Click to Add image</span>
-                  </label>
-                )}
-              </div>
-            </div>
-            <div className="flex flex-col my-7">
-              <p className="text-lg font-semiBold">Pros</p>
-              <div className="flex">
-                <Input
-                  className="py-2"
-                  placeholder="Add Benefits"
-                  onChange={(e:any) => setPros(e.target.value)}
-                  value={pros}
-                  onKeyDown={(e:any) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      if (pros.trim() !== "") {
-                        setProsAr([...prosAr, pros]);
-                        setPros("");
-                      }
-                    }
-                  }}
-                  disabled={loading}
-                />
-                <button
-                  onClick={() => {
-                    if (pros === "") return;
-                    setProsAr([...prosAr, pros]);
-                    setPros("");
-                  }}
-                  className="bg-[#3838F0] text-white px-4 py-2 rounded-md ml-3 disabled:opacity-50"
-                  disabled={loading}
-                >
-                  <Plus size={16} />
-                </button>
-              </div>
-              <div>
-                {prosAr.map((item, index) => (
-                  <div
-                    key={index}
-                    className="ml-1 text-black/60 flex flex-row items-center space-x-2 text-sm mt-2"
-                  >
-                    <Circle
-                      size={10}
-                      className="bg-gray-400 rounded-full mr-2"
-                    />
-                    <span className="flex-1">{item}</span>
-                    <X
-                      onClick={() => {
-                        if (loading) return;
-                        const filtered = prosAr.filter(
-                          (_, idx) => idx !== index
-                        );
-                        setProsAr(filtered);
-                      }}
-                      className="bg-indigo-600 rounded-full text-white cursor-pointer hover:bg-indigo-700"
-                      size={12}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="flex flex-col my-7">
-              <p className="text-lg font-semiBold">Cons</p>
-              <div className="flex">
-                <Input
-                  className="py-2"
-                  placeholder="Add Demerits"
-                  onChange={(e:any) => setCons(e.target.value)}
-                  value={cons}
-                  onKeyDown={(e:any) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      if (cons.trim() !== "") {
-                        setConsAr([...consAr, cons]);
-                        setCons("");
-                      }
-                    }
-                  }}
-                  disabled={loading}
-                />
-                <button
-                  onClick={() => {
-                    if (cons === "") return;
-                    setConsAr([...consAr, cons]);
-                    setCons("");
-                  }}
-                  className="bg-[#3838F0] text-white px-4 py-2 rounded-md ml-3 disabled:opacity-50"
-                  disabled={loading}
-                >
-                  <Plus size={16} />
-                </button>
-              </div>
-              <div>
-                {consAr.map((item, index) => (
-                  <div
-                    key={index}
-                    className="ml-1 text-black/60 flex flex-row items-center space-x-2 text-sm mt-2"
-                  >
-                    <Circle
-                      size={10}
-                      className="bg-gray-400 rounded-full mr-2"
-                    />
-                    <span className="flex-1">{item}</span>
-                    <X
-                      onClick={() => {
-                        if (loading) return;
-                        const filtered = consAr.filter(
-                          (_, idx) => idx !== index
-                        );
-                        setConsAr(filtered);
-                      }}
-                      className="bg-indigo-600 rounded-full text-white cursor-pointer hover:bg-indigo-700"
-                      size={12}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </Form>
-        )}
-      </Modal>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

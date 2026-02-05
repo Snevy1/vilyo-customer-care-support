@@ -1,39 +1,78 @@
-import { Button, Form, Input, message, Modal, Switch } from 'antd';
-import { Circle, CloudUploadIcon, Plus, X } from 'lucide-react';
+import { Circle, CloudUploadIcon, Plus, X } from "lucide-react";
 import React, { useState, useRef } from "react";
-import { useStore } from '@/store/store';
+//import { useStore } from "@/store/store";
+
+// shadcn/ui imports
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { toast } from "sonner"
 
 interface AddAIProviderProps {
   onAdd: (formData: FormData) => Promise<void>;
   loading?: boolean;
 }
 
-export default function AddAIProvider({ onAdd, loading = false }: AddAIProviderProps) {
+export default function AddAIProvider({
+  onAdd,
+  loading = false,
+}: AddAIProviderProps) {
   const [step, setStep] = useState(1);
   const [open, setOpen] = useState(false);
-  const [form] = Form.useForm();
-  const [step1Data, setStep1Data] = useState<any>(null);
+  const [name, setName] = useState("");
+  const [apiKey, setApiKey] = useState("");
+  const [price, setPrice] = useState("");
+  const [visible, setVisible] = useState(true);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [fileToUpload, setFileToUpload] = useState<File | null>(null);
   const [pros, setPros] = useState<string>("");
   const [prosAr, setProsAr] = useState<string[]>([]);
   const [cons, setCons] = useState<string>("");
   const [consAr, setConsAr] = useState<string[]>([]);
-  
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const user = useStore((state) => state.auth.user);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const showModal = () => {
-    setOpen(true);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  //const user = useStore((state) => state.auth.user);
+
+  let user = {
+    _id: "001",
+    name:"nevily" ,
+    email: "simiyunevily@gmail.com",
+    messageNotificationInterval: 5,
+    profilePicture: {imageUrl: ""}
+  }
+    const validateStep1 = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!name.trim()) {
+      newErrors.name = "Please enter AI provider name";
+    }
+    if (!apiKey.trim()) {
+      newErrors.apiKey = "Please enter API key";
+    }
+    if (!price.trim()) {
+      newErrors.price = "Please enter price";
+    } else if (!/^\d+(\.\d{1,2})?$/.test(price)) {
+      newErrors.price = "Please enter a valid price";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
-  const handleNextStep = async () => {
-    try {
-      const values = await form.validateFields();
-      setStep1Data(values);
+  const handleNextStep = () => {
+    if (validateStep1()) {
       setStep(2);
-    } catch (error) {
-      console.error("Validation failed:", error);
     }
   };
 
@@ -42,7 +81,11 @@ export default function AddAIProvider({ onAdd, loading = false }: AddAIProviderP
     if (!file) return;
 
     if (file.size > 5 * 1024 * 1024) {
-      message.error("Image must be smaller than 5MB");
+      
+  toast.error("Error", {
+    description: "Image must be smaller than 5MB",
+  });
+      
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -52,7 +95,12 @@ export default function AddAIProvider({ onAdd, loading = false }: AddAIProviderP
     }
 
     if (!file.type.startsWith("image/")) {
-      message.error("Please upload an image file");
+      
+      
+  toast.error("Error", {
+    description: "Please upload an image file",
+  });
+      
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -80,14 +128,21 @@ export default function AddAIProvider({ onAdd, loading = false }: AddAIProviderP
       const formData = new FormData();
 
       // Add all the text data
-      const completeData = { ...step1Data, ...step2Data };
+      const completeData = {
+        name,
+        apiKey,
+        price,
+        visible,
+        ...step2Data,
+      };
+
       Object.keys(completeData).forEach((key) => {
-        if (Array.isArray(completeData[key])) {
-          formData.append(key, JSON.stringify(completeData[key]));
-        } else if (typeof completeData[key] === 'boolean') {
-          formData.append(key, completeData[key].toString());
+        if (Array.isArray(completeData[key as keyof typeof completeData])) {
+          formData.append(key, JSON.stringify(completeData[key as keyof typeof completeData]));
+        } else if (typeof completeData[key as keyof typeof completeData] === "boolean") {
+          formData.append(key, completeData[key as keyof typeof completeData].toString());
         } else {
-          formData.append(key, completeData[key]);
+          formData.append(key, completeData[key as keyof typeof completeData] as string);
         }
       });
 
@@ -112,129 +167,149 @@ export default function AddAIProvider({ onAdd, loading = false }: AddAIProviderP
       */
 
       await onAdd(formData);
-      message.success("AI provider added successfully");
+
+      toast.success("Success", {
+    description: "AI provider added successfully",
+  });
+  
       
+
       // Reset states
       setOpen(false);
-      setStep(1);
-      form.resetFields();
-      setProsAr([]);
-      setConsAr([]);
-      setPreviewImage(null);
-      setFileToUpload(null);
-      setStep1Data(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
+      resetForm();
     } catch (error) {
       console.error("Failed to add AI provider:", error);
-      message.error("Failed to add AI provider");
+      
+  toast.error("Error", {
+    description: "Failed to add AI provider"
+  });
+      
     }
   };
 
-  const handleCancel = () => {
-    setOpen(false);
+  const resetForm = () => {
     setStep(1);
-    form.resetFields();
+    setName("");
+    setApiKey("");
+    setPrice("");
+    setVisible(true);
     setProsAr([]);
     setConsAr([]);
     setPreviewImage(null);
     setFileToUpload(null);
-    setStep1Data(null);
+    setErrors({});
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
 
-  return (
-    <>
-      <button
-        onClick={showModal}
-        className="mr-2 rounded-md bg-[#3838F0] text-white py-1 px-5 hover:bg-[#2a2ac7] transition-colors disabled:opacity-50"
-        disabled={loading}
-      >
-        Add AI Providers
-      </button>
+  const handleCancel = () => {
+    setOpen(false);
+    resetForm();
+  };
 
-      <Modal
-        title="Add New AI Provider"
-        open={open}
-        onCancel={handleCancel}
-        footer={[
-          <div className="mt-5" key="footer-buttons">
-            <Button onClick={handleCancel} className="mr-5" disabled={loading}>
-              Cancel
-            </Button>
-            {step === 1 ? (
-              <Button
-                className="text-white bg-[#3838F0] px-5 hover:bg-[#2a2ac7]"
-                onClick={handleNextStep}
-                disabled={loading}
-              >
-                Next
-              </Button>
-            ) : (
-              <Button
-                className="text-white bg-[#3838F0] px-5 hover:bg-[#2a2ac7]"
-                onClick={handleOk}
-                loading={loading}
-                disabled={loading}
-              >
-                {loading ? "Adding..." : "Add AI Provider"}
-              </Button>
-            )}
-          </div>,
-        ]}
-      >
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <button
+          className="mr-2 rounded-md bg-[#3838F0] text-white py-1 px-5 hover:bg-[#2a2ac7] transition-colors disabled:opacity-50"
+          disabled={loading}
+        >
+          Add AI Providers
+        </button>
+      </DialogTrigger>
+
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Add New AI Provider</DialogTitle>
+        </DialogHeader>
+
         {step === 1 ? (
-          <Form form={form} layout="vertical" initialValues={{ visible: true }}>
-            <Form.Item
-              name="name"
-              label="AI Provider Name"
-              rules={[{ required: true, message: 'Please enter AI provider name' }]}
-            >
-              <Input className="py-2" placeholder="Name" disabled={loading} />
-            </Form.Item>
-            <Form.Item
-              name="apiKey"
-              label="API Key"
-              rules={[{ required: true, message: 'Please enter API key' }]}
-            >
-              <Input.TextArea
-                autoSize={{ minRows: 1, maxRows: 5 }}
-                className="py-2"
-                placeholder="API Key"
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">
+                AI Provider Name <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="name"
+                placeholder="Name"
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  if (errors.name) {
+                    setErrors({ ...errors, name: "" });
+                  }
+                }}
                 disabled={loading}
+                className={errors.name ? "border-red-500" : ""}
               />
-            </Form.Item>
-            <Form.Item 
-              name="price" 
-              label="Price" 
-              rules={[
-                { required: true, message: 'Please enter price' },
-                { pattern: /^\d+(\.\d{1,2})?$/, message: 'Please enter a valid price' }
-              ]}
-            >
-              <Input 
-                className="py-2" 
-                placeholder="Price" 
-                type="number" 
+              {errors.name && (
+                <p className="text-sm text-red-500">{errors.name}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="apiKey">
+                API Key <span className="text-red-500">*</span>
+              </Label>
+              <Textarea
+                id="apiKey"
+                placeholder="API Key"
+                value={apiKey}
+                onChange={(e) => {
+                  setApiKey(e.target.value);
+                  if (errors.apiKey) {
+                    setErrors({ ...errors, apiKey: "" });
+                  }
+                }}
+                disabled={loading}
+                rows={3}
+                className={errors.apiKey ? "border-red-500" : ""}
+              />
+              {errors.apiKey && (
+                <p className="text-sm text-red-500">{errors.apiKey}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="price">
+                Price <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="price"
+                placeholder="Price"
+                type="number"
                 step="0.01"
                 min="0"
+                value={price}
+                onChange={(e) => {
+                  setPrice(e.target.value);
+                  if (errors.price) {
+                    setErrors({ ...errors, price: "" });
+                  }
+                }}
+                disabled={loading}
+                className={errors.price ? "border-red-500" : ""}
+              />
+              {errors.price && (
+                <p className="text-sm text-red-500">{errors.price}</p>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between pt-2">
+              <Label htmlFor="visible">Enable / Disable Visibility</Label>
+              <Switch
+                id="visible"
+                checked={visible}
+                onCheckedChange={setVisible}
                 disabled={loading}
               />
-            </Form.Item>
-            <div className="flex justify-between mt-5">
-              <p>Enable / Disable Visibility</p>
-              <Form.Item name="visible" valuePropName="checked" noStyle>
-                <Switch defaultChecked disabled={loading} />
-              </Form.Item>
             </div>
-          </Form>
+          </div>
         ) : (
-          <Form layout="vertical" initialValues={{}}>
+          <div className="space-y-6 py-4">
             <div className="flex flex-col">
-              <p className="text-lg font-semiBold">AI Logo</p>
+              <Label className="text-lg font-semibold mb-2">AI Logo</Label>
               <div className="flex flex-col items-center py-5">
                 <input
                   type="file"
@@ -271,15 +346,15 @@ export default function AddAIProvider({ onAdd, loading = false }: AddAIProviderP
                 )}
               </div>
             </div>
-            <div className="flex flex-col my-7">
-              <p className="text-lg font-semiBold">Pros</p>
-              <div className="flex">
+
+            <div className="flex flex-col">
+              <Label className="text-lg font-semibold mb-2">Pros</Label>
+              <div className="flex gap-2">
                 <Input
-                  className="py-2"
                   placeholder="Add Benefits"
-                  onChange={(e:any) => setPros(e.target.value)}
                   value={pros}
-                  onKeyDown={(e:any) => {
+                  onChange={(e) => setPros(e.target.value)}
+                  onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
                       if (pros.trim() !== "") {
@@ -290,23 +365,24 @@ export default function AddAIProvider({ onAdd, loading = false }: AddAIProviderP
                   }}
                   disabled={loading}
                 />
-                <button
+                <Button
+                  type="button"
                   onClick={() => {
                     if (pros === "") return;
                     setProsAr([...prosAr, pros]);
                     setPros("");
                   }}
-                  className="bg-[#3838F0] text-white px-4 py-2 rounded-md ml-3 disabled:opacity-50"
+                  className="bg-[#3838F0] hover:bg-[#2a2ac7]"
                   disabled={loading}
                 >
                   <Plus size={16} />
-                </button>
+                </Button>
               </div>
-              <div>
+              <div className="mt-2 space-y-2">
                 {prosAr.map((item, index) => (
                   <div
                     key={index}
-                    className="ml-1 text-black/60 flex flex-row items-center space-x-2 text-sm mt-2"
+                    className="ml-1 text-black/60 flex flex-row items-center space-x-2 text-sm"
                   >
                     <Circle
                       size={10}
@@ -316,9 +392,7 @@ export default function AddAIProvider({ onAdd, loading = false }: AddAIProviderP
                     <X
                       onClick={() => {
                         if (loading) return;
-                        const filtered = prosAr.filter(
-                          (_, idx) => idx !== index
-                        );
+                        const filtered = prosAr.filter((_, idx) => idx !== index);
                         setProsAr(filtered);
                       }}
                       className="bg-indigo-600 rounded-full text-white cursor-pointer hover:bg-indigo-700"
@@ -328,15 +402,15 @@ export default function AddAIProvider({ onAdd, loading = false }: AddAIProviderP
                 ))}
               </div>
             </div>
-            <div className="flex flex-col my-7">
-              <p className="text-lg font-semiBold">Cons</p>
-              <div className="flex">
+
+            <div className="flex flex-col">
+              <Label className="text-lg font-semibold mb-2">Cons</Label>
+              <div className="flex gap-2">
                 <Input
-                  className="py-2"
                   placeholder="Add Demerits"
-                  onChange={(e:any) => setCons(e.target.value)}
                   value={cons}
-                  onKeyDown={(e:any) => {
+                  onChange={(e) => setCons(e.target.value)}
+                  onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
                       if (cons.trim() !== "") {
@@ -347,23 +421,24 @@ export default function AddAIProvider({ onAdd, loading = false }: AddAIProviderP
                   }}
                   disabled={loading}
                 />
-                <button
+                <Button
+                  type="button"
                   onClick={() => {
                     if (cons === "") return;
                     setConsAr([...consAr, cons]);
                     setCons("");
                   }}
-                  className="bg-[#3838F0] text-white px-4 py-2 rounded-md ml-3 disabled:opacity-50"
+                  className="bg-[#3838F0] hover:bg-[#2a2ac7]"
                   disabled={loading}
                 >
                   <Plus size={16} />
-                </button>
+                </Button>
               </div>
-              <div>
+              <div className="mt-2 space-y-2">
                 {consAr.map((item, index) => (
                   <div
                     key={index}
-                    className="ml-1 text-black/60 flex flex-row items-center space-x-2 text-sm mt-2"
+                    className="ml-1 text-black/60 flex flex-row items-center space-x-2 text-sm"
                   >
                     <Circle
                       size={10}
@@ -373,9 +448,7 @@ export default function AddAIProvider({ onAdd, loading = false }: AddAIProviderP
                     <X
                       onClick={() => {
                         if (loading) return;
-                        const filtered = consAr.filter(
-                          (_, idx) => idx !== index
-                        );
+                        const filtered = consAr.filter((_, idx) => idx !== index);
                         setConsAr(filtered);
                       }}
                       className="bg-indigo-600 rounded-full text-white cursor-pointer hover:bg-indigo-700"
@@ -385,9 +458,32 @@ export default function AddAIProvider({ onAdd, loading = false }: AddAIProviderP
                 ))}
               </div>
             </div>
-          </Form>
+          </div>
         )}
-      </Modal>
-    </>
+
+        <DialogFooter className="mt-4">
+          <Button variant="outline" onClick={handleCancel} disabled={loading}>
+            Cancel
+          </Button>
+          {step === 1 ? (
+            <Button
+              onClick={handleNextStep}
+              className="bg-[#3838F0] hover:bg-[#2a2ac7] text-white"
+              disabled={loading}
+            >
+              Next
+            </Button>
+          ) : (
+            <Button
+              onClick={handleOk}
+              className="bg-[#3838F0] hover:bg-[#2a2ac7] text-white"
+              disabled={loading}
+            >
+              {loading ? "Adding..." : "Add AI Provider"}
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

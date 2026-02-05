@@ -151,3 +151,110 @@ export interface AddAIModelPayload {
   isActive: boolean;
   image?: File;
 }
+
+
+
+
+export interface Feature {
+  _id: string;
+  name: string;
+  type?: "item" | "extra" | "benefit";
+  minQty?: number;
+  maxQty?: number;
+  price?: number;
+  description?: string;
+  qty?: number;
+  customPrice?: number;
+}
+
+export interface SubscriptionPackage {
+  _id: string;
+  name: string;
+  subtitle?: string;
+  basePriceMin?: number;
+  basePriceMax?: number;
+  minItems?: number;
+  benefits: string[];
+  features: Feature[];
+}
+
+
+
+
+
+// Add these to your existing subscription types
+export interface FeatureItem {
+  _id: string;
+  name: string;
+  description?: string;
+  price?: number;
+  type?: "item" | "benefit" | "extra";
+}
+
+export interface PackageFeature {
+  _id?: {
+    name: string;
+    price: number;
+    type: "item" | "benefit" | "extra";
+    description?: string;
+  };
+  name?: string;
+  qty: number;
+  minQty: number;
+  maxQty: number;
+  customPrice?: number;
+  type?: "item" | "benefit" | "extra";
+  price?: number;
+  description?: string;
+}
+
+export interface SubscriptionPackageData {
+  _id: string;
+  name: string;
+  subtitle?: string;
+  basePriceMin?: number;
+  basePriceMax?: number;
+  minItems?: number;
+  benefits?: string[];
+  features: PackageFeature[];
+}
+
+
+// Social Media
+
+
+export interface SocialLink {
+  id: string;
+  name: string;
+  link: string;
+  icon?: string; // URL or React component
+  platform?: string;
+}
+
+export interface SocialLinkFormData {
+  name: string;
+  link: string;
+  icon?: string;
+}
+
+
+
+
+export interface PaymentProcessor {
+  _id: string;
+  name: string;
+  apiKey: string;
+  secretKey: string;
+  authKey: string;
+  logoUrl: string;
+  isEnabled?: boolean;
+  priority?: number;
+  is_top_priority?: boolean;
+
+  // Add the missing ones here so everything uses the same shape
+  provider: string;
+  customerPortalLink?: string;
+  webhookSecretKey?: string;
+  userTypes?: string[] | string;
+  orgTypes?: string[] | string;
+}

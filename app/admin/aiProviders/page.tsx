@@ -1,20 +1,32 @@
 import CustomSearch from "@/components/shared/ReuseAble/input";
-import { Warning } from "@phosphor-icons/react";
-import {
-  Button,
-  message,
-  Modal,
-  notification,
-  Switch,
-  Table,
-  TableColumnsType,
-} from "antd";
+import { AlertTriangle } from "lucide-react";
 import { PoundSterling } from "lucide-react";
 import React, { useState, useEffect } from "react";
-import AddAIProvider from "./addAIprovider"
+import AddAIProvider from "./addAIprovider";
 import EditAIProvider from "./editAIprovider";
-import { AIModel } from "@/@types/types"; 
-import { useStore } from "@/store/store";
+import { AIModel } from "@/@types/types";
+//import { useStore } from "@/store/store";
+
+// shadcn/ui imports
+import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Switch } from "@/components/ui/switch";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { toast } from "sonner"
 
 // Static data for migration
 const staticAIProviders: AIModel[] = [
@@ -62,7 +74,14 @@ export default function AIProvidersIndex() {
   const [isLoading, setIsLoading] = useState(false);
   
   // Get user from store (for notification purposes)
-  const user = useStore((state:any) => state.auth.user);
+  //const user = useStore((state: any) => state.auth.user);
+  let user = {
+    _id: "001",
+    name:"nevily" ,
+    email: "simiyunevily@gmail.com",
+    messageNotificationInterval: 5,
+    profilePicture: {imageUrl: ""}
+  }
 
   // Initialize with static data
   useEffect(() => {
@@ -79,7 +98,7 @@ export default function AIProvidersIndex() {
   // Handle adding a new AI provider
   const handleAddAIProvider = async (formData: FormData) => {
     setIsLoading(true);
-    
+
     // TODO: Uncomment for API integration
     /*
     try {
@@ -107,23 +126,29 @@ export default function AIProvidersIndex() {
       // });
       
       setAiProviders(prev => [...prev, newProvider]);
-      message.success("AI provider added successfully!");
+      toast.success("Success", {
+    description: "AI provider added successfully!",
+  });
+      
     } catch (error) {
       console.error("Failed to add AI provider:", error);
-      message.error("Failed to add AI provider");
+       toast.error("Error", {
+    description: "Failed to add AI provider",
+  });
+      
     }
     */
-    
+
     // Static implementation
     try {
       // Extract data from FormData
-      const name = formData.get('name') as string;
-      const apiKey = formData.get('apiKey') as string;
-      const price = parseFloat(formData.get('price') as string);
-      const visible = formData.get('visible') === 'true';
-      const pros = JSON.parse(formData.get('pros') as string || '[]');
-      const cons = JSON.parse(formData.get('cons') as string || '[]');
-      
+      const name = formData.get("name") as string;
+      const apiKey = formData.get("apiKey") as string;
+      const price = parseFloat(formData.get("price") as string);
+      const visible = formData.get("visible") === "true";
+      const pros = JSON.parse(formData.get("pros") as string || "[]");
+      const cons = JSON.parse(formData.get("cons") as string || "[]");
+
       const newProvider: AIModel = {
         _id: Date.now().toString(),
         name,
@@ -133,14 +158,19 @@ export default function AIProvidersIndex() {
         pros,
         cons,
         isActive: true,
-        logoUrl: URL.createObjectURL(formData.get('image') as File || new Blob()),
+        logoUrl: URL.createObjectURL(formData.get("image") as File || new Blob()),
       };
-      
-      setAiProviders(prev => [...prev, newProvider]);
-      message.success("AI provider added successfully! (static mode)");
+
+      setAiProviders((prev) => [...prev, newProvider]);
+      toast.success("Success", {
+    description: "AI provider added successfully! (static mode)",
+  });
     } catch (error) {
       console.error("Static add failed:", error);
-      message.error("Failed to add AI provider (static mode)");
+      toast.error("Error", {
+    description: "Failed to add AI provider (static mode)",
+  });
+      
     } finally {
       setIsLoading(false);
     }
@@ -149,7 +179,7 @@ export default function AIProvidersIndex() {
   // Handle updating an AI provider
   const handleUpdateAIProvider = async (id: string, formData: FormData) => {
     setIsLoading(true);
-    
+
     // TODO: Uncomment for API integration
     /*
     try {
@@ -181,23 +211,29 @@ export default function AIProvidersIndex() {
           provider._id === id ? updatedProvider : provider
         )
       );
-      message.success("AI provider updated successfully!");
+      toast.success("Success", {
+    description: "AI provider updated successfully!",
+  });
+      
     } catch (error) {
       console.error("Failed to update AI provider:", error);
-      message.error("Failed to update AI provider");
+      toast.error("Error", {
+    description: "Failed to update AI provider",
+  });
+      
     }
     */
-    
+
     // Static implementation
     try {
       // Extract data from FormData
-      const name = formData.get('name') as string;
-      const apiKey = formData.get('apiKey') as string;
-      const price = parseFloat(formData.get('price') as string);
-      const visible = formData.get('visible') === 'true';
-      const pros = JSON.parse(formData.get('pros') as string || '[]');
-      const cons = JSON.parse(formData.get('cons') as string || '[]');
-      
+      const name = formData.get("name") as string;
+      const apiKey = formData.get("apiKey") as string;
+      const price = parseFloat(formData.get("price") as string);
+      const visible = formData.get("visible") === "true";
+      const pros = JSON.parse(formData.get("pros") as string || "[]");
+      const cons = JSON.parse(formData.get("cons") as string || "[]");
+
       const updatedProvider: AIModel = {
         _id: id,
         name,
@@ -207,18 +243,22 @@ export default function AIProvidersIndex() {
         pros,
         cons,
         isActive: true,
-        logoUrl: aiProviders.find(p => p._id === id)?.logoUrl,
+        logoUrl: aiProviders.find((p) => p._id === id)?.logoUrl,
       };
-      
-      setAiProviders(prev => 
-        prev.map(provider => 
-          provider._id === id ? updatedProvider : provider
-        )
+
+      setAiProviders((prev) =>
+        prev.map((provider) => (provider._id === id ? updatedProvider : provider))
       );
-      message.success("AI provider updated successfully! (static mode)");
+      toast.success("Success", {
+    description: "AI provider updated successfully! (static mode)",
+  });
+      
     } catch (error) {
       console.error("Static update failed:", error);
-      message.error("Failed to update AI provider (static mode)");
+      toast.error("Error", {
+    description: "Failed to update AI provider (static mode)",
+  });
+      
     } finally {
       setIsLoading(false);
     }
@@ -258,39 +298,38 @@ export default function AIProvidersIndex() {
             : provider
         )
       );
+
+       toast.success("Success", {
+   description: "Visibility changed successfully.",
+  });
       
-      notification.success({
-        message: "Success",
-        description: "Visibility changed successfully.",
-      });
+      
     } catch (error) {
       console.error("Failed to toggle visibility:", error);
-      notification.error({
-        message: "Error",
-        description: "Failed to toggle visibility.",
-      });
+      toast.success("Error", {
+   description: "Failed to toggle visibility.",
+  });
+      
     }
     */
-    
+
     // Static implementation
-    setAiProviders(prev => 
-      prev.map(provider => 
-        provider._id === id 
-          ? { ...provider, visible: !provider.visible }
-          : provider
+    setAiProviders((prev) =>
+      prev.map((provider) =>
+        provider._id === id ? { ...provider, visible: !provider.visible } : provider
       )
     );
+    toast.success("Success", {
+   description: "Visibility changed successfully. (static mode)",
+  });
+
     
-    notification.success({
-      message: "Success",
-      description: "Visibility changed successfully. (static mode)",
-    });
   };
 
   // Handle removing an AI provider
   const handleRemoveAIProvider = async () => {
     if (!selectedAIProviderId) return;
-    
+
     // TODO: Uncomment for API integration
     /*
     try {
@@ -319,85 +358,33 @@ export default function AIProvidersIndex() {
       );
       
       setOpen(false);
-      message.success("AI provider removed successfully!");
+      toast.success("Success", {
+    description: "AI provider removed successfully!",
+  });
+  
+      
+      
     } catch (error) {
       console.error("Failed to remove AI provider:", error);
-      message.error("Failed to remove AI provider");
+      toast.error("Error", {
+    description: "Failed to remove AI provider",
+  });
+      
     }
     */
-    
-    // Static implementation
-    setAiProviders(prev => 
-      prev.filter(provider => provider._id !== selectedAIProviderId)
-    );
-    
-    setOpen(false);
-    message.success("AI provider removed successfully! (static mode)");
-  };
 
-  const columns: TableColumnsType<AIModel> = [
-    {
-      title: "AI Provider Name",
-      dataIndex: "name",
-      render: (text: string, record: AIModel) => (
-        <div className="flex items-center md:w-full w-32">
-          {record.logoUrl ? (
-            <img
-              src={record.logoUrl}
-              alt={record.name}
-              className="w-6 h-6 mr-2 rounded-full object-cover"
-            />
-          ) : (
-            <div className="w-6 h-6 mr-2 bg-gray-300 rounded-full" />
-          )}
-          <p className="mr-4 font-semibold">{text}</p>
-          <EditAIProvider
-            id={record._id}
-            provider={record}
-            onUpdate={handleUpdateAIProvider}
-            loading={isLoading}
-          />
-        </div>
-      ),
-    },
-    {
-      title: "Price",
-      dataIndex: "price",
-      render: (value: number) => (
-        <div className="flex text-xs items-center">
-          <PoundSterling className="mr-1 text-xs" size={15} />
-          <p className="text-sm">{value}</p>
-        </div>
-      ),
-    },
-    {
-      title: "Action",
-      width: "15%",
-      render: (value: any, record: AIModel) => (
-        <Button
-          type="primary"
-          className="text-xs"
-          danger
-          onClick={() => {
-            setSelectedAIProviderId(record._id);
-            setOpen(true);
-          }}
-        >
-          Remove
-        </Button>
-      ),
-    },
-    {
-      title: "Visibility",
-      dataIndex: "visible",
-      render: (value: boolean, record: AIModel) => (
-        <Switch
-          checked={value}
-          onChange={() => handleToggleVisibility(record._id)}
-        />
-      ),
-    },
-  ];
+    // Static implementation
+    setAiProviders((prev) =>
+      prev.filter((provider) => provider._id !== selectedAIProviderId)
+    );
+
+    setOpen(false);
+    toast.success("Success", {
+   description: "AI provider removed successfully! (static mode)",
+  });
+      
+    
+  };
 
   return (
     <div className="flex flex-col bg-white rounded-lg mt-5">
@@ -410,7 +397,7 @@ export default function AIProvidersIndex() {
         <div className="md:col-span-2 col-span-1">
           <div className="grid grid-cols-2 gap-y-4 gap-x-2">
             <div className="md:w-auto w-full">
-              <CustomSearch onChange={(e:any) => setSearch(e)} value={search} />
+              <CustomSearch onChange={(e: any) => setSearch(e)} value={search} />
             </div>
             <AddAIProvider onAdd={handleAddAIProvider} loading={isLoading} />
           </div>
@@ -418,47 +405,112 @@ export default function AIProvidersIndex() {
       </div>
 
       <div className="mt-3 mx-2">
-        <Table
-          columns={columns}
-          dataSource={filterData}
-          rowKey={(record:any) => record._id}
-          loading={isLoading}
-          className="rounded-md border border-grey mb-3 w-[calc(100% - 6px)]"
-          scroll={{ x: true }}
-        />
+        <div className="rounded-md border border-gray-200 mb-3">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>AI Provider Name</TableHead>
+                <TableHead>Price</TableHead>
+                <TableHead className="w-[15%]">Action</TableHead>
+                <TableHead>Visibility</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-8">
+                    <div className="flex justify-center items-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : filterData.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                    No AI providers found
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filterData.map((record) => (
+                  <TableRow key={record._id}>
+                    <TableCell>
+                      <div className="flex items-center md:w-full w-32">
+                        {record.logoUrl ? (
+                          <img
+                            src={record.logoUrl}
+                            alt={record.name}
+                            className="w-6 h-6 mr-2 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-6 h-6 mr-2 bg-gray-300 rounded-full" />
+                        )}
+                        <p className="mr-4 font-semibold">{record.name}</p>
+                        <EditAIProvider
+                          id={record._id}
+                          provider={record}
+                          onUpdate={handleUpdateAIProvider}
+                          loading={isLoading}
+                        />
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex text-xs items-center">
+                        <PoundSterling className="mr-1 text-xs" size={15} />
+                        <p className="text-sm">{record.price}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedAIProviderId(record._id);
+                          setOpen(true);
+                        }}
+                      >
+                        Remove
+                      </Button>
+                    </TableCell>
+                    <TableCell>
+                      <Switch
+                        checked={record.visible}
+                        onCheckedChange={() => handleToggleVisibility(record._id)}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
-      <Modal
-        title={
-          <div className="flex items-center">
-            <Warning className="mr-3 text-[#FF4949] bg-[#FFE5E5] w-7 h-7 p-1 rounded-full" />
-            <p>Remove AI Provider</p>
-          </div>
-        }
-        open={open}
-        onOk={handleRemoveAIProvider}
-        onCancel={() => setOpen(false)}
-        footer={[
-          <Button key="cancel" onClick={() => setOpen(false)}>
-            Cancel
-          </Button>,
-          <Button
-            key="remove"
-            type="primary"
-            danger
-            className="text-white"
-            onClick={handleRemoveAIProvider}
-            loading={isLoading}
-          >
-            Remove
-          </Button>,
-        ]}
-      >
-        <p className="py-3">
-          Are you sure you want to remove this AI provider? Removing this AI
-          provider will permanently erase it from the system.
-        </p>
-      </Modal>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <AlertTriangle size={20} className="mr-3 text-[#FF4949] bg-[#FFE5E5] w-7 h-7 p-1 rounded-full" />
+              <span>Remove AI Provider</span>
+            </DialogTitle>
+            <DialogDescription className="py-3">
+              Are you sure you want to remove this AI provider? Removing this AI
+              provider will permanently erase it from the system.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleRemoveAIProvider}
+              disabled={isLoading}
+            >
+              {isLoading ? "Removing..." : "Remove"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
