@@ -229,7 +229,7 @@ export default function ViewEdit({ data }: ViewEditProps) {
         <span className="cursor-pointer hover:underline">Edit Processor</span>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-137.5 max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Payment Processor</DialogTitle>
           <DialogDescription>

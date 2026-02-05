@@ -90,7 +90,7 @@ const PackageCard: React.FC<PackageCardProps> = ({ packageData }) => {
   };
 
   return (
-    <Card className="border-gray-300 shadow-md w-full max-w-[450px] mx-auto overflow-hidden">
+    <Card className="border-gray-300 shadow-md w-full max-w-112.5 mx-auto overflow-hidden">
       {/* Header */}
       <CardHeader className="bg-[#000080] text-white p-6 space-y-2">
         <div className="flex items-center gap-2">

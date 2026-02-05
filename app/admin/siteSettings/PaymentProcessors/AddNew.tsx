@@ -166,7 +166,7 @@ export default function AddNew(/* { onRefetch } */) {
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-137.5 max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New Payment Processor</DialogTitle>
           <DialogDescription>

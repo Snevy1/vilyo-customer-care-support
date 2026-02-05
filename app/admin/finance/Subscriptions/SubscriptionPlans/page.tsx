@@ -186,11 +186,11 @@ const SubscriptionPlan = () => {
 
   if (isLoading) {
     return (
-      <div className="pl-[0px]">
+      <div className="pl-0">
         <div className="flex gap-4 p-4 overflow-x-auto">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="min-w-[300px]">
-              <Skeleton className="h-[500px] w-full rounded-lg" />
+            <div key={i} className="min-w-75">
+              <Skeleton className="h-125 w-full rounded-lg" />
             </div>
           ))}
         </div>
@@ -200,7 +200,7 @@ const SubscriptionPlan = () => {
 
   if (isError) {
     return (
-      <div className="pl-[0px] p-4">
+      <div className="pl-0 p-4">
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3">
           <AlertCircle className="h-5 w-5 text-red-500" />
           <div>
@@ -215,13 +215,13 @@ const SubscriptionPlan = () => {
   }
 
   return (
-    <div className="pl-[0px]">
+    <div className="pl-0">
       <Carousel className="relative overflow-x-scroll scrollbar-hide max-w-[100vw] md:max-w-[75vw]">
         <CarouselContent className="flex gap-2 md:gap-4 p-2 md:p-4">
           {subscriptionPackages?.map((pkg) => (
             <CarouselItem
               key={pkg._id}
-              className="min-w-[250px] sm:min-w-[300px] md:min-w-[350px] lg:min-w-[400px] basis-[90%] sm:basis-[70%] md:basis-[50%] lg:basis-[40%] xl:basis-[30%]"
+              className="min-w-62.5 sm:min-w-75 md:min-w-87.5 lg:min-w-100 basis-[90%] sm:basis-[70%] md:basis-[50%] lg:basis-[40%] xl:basis-[30%]"
             >
               <PackageCard
                 packageData={{
@@ -247,8 +247,8 @@ const SubscriptionPlan = () => {
             </CarouselItem>
           ))}
         </CarouselContent>
-        <CarouselPrevious className="absolute z-[99] left-[-20px] sm:left-[-10px] top-1/3 transform translate-x-1/2 bg-[#000080] text-white h-10 w-10 rounded-full hover:bg-[#000060]" />
-        <CarouselNext className="absolute right-[20px] top-1/3 z-[99] transform translate-x-1/2 bg-[#000080] text-white h-10 w-10 rounded-full hover:bg-[#000060]" />
+        <CarouselPrevious className="absolute z-99 -left-5 sm:-left-2.5 top-1/3 transform translate-x-1/2 bg-[#000080] text-white h-10 w-10 rounded-full hover:bg-[#000060]" />
+        <CarouselNext className="absolute right-5 top-1/3 z-99 transform translate-x-1/2 bg-[#000080] text-white h-10 w-10 rounded-full hover:bg-[#000060]" />
       </Carousel>
     </div>
   );

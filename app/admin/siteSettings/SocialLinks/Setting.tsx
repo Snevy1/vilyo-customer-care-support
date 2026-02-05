@@ -145,7 +145,7 @@ export default function SocialLinkSettings({
               )}
               <div>
                 <p className="font-medium">{data.name}</p>
-                <p className="text-sm text-gray-500 truncate max-w-[200px]">
+                <p className="text-sm text-gray-500 truncate max-w-50">
                   {data.link}
                 </p>
               </div>

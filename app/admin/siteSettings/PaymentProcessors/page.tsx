@@ -246,7 +246,7 @@ export default function AdminUser() {
 
                 <TableCell>
                   <div className="flex items-center gap-3">
-                    <div className="flex flex-col gap-1 min-w-[140px]">
+                    <div className="flex flex-col gap-1 min-w-35">
                       <span className="font-medium">{record.name}</span>
                       <img
                         src={record.logoUrl}

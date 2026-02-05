@@ -146,7 +146,7 @@ const ViewPaymentProcessor = () => {
       <div className="flex flex-col md:flex-row h-full">
         {/* Left: List of processors */}
         <div className="w-full md:w-1/3 border-r p-4">
-          <ScrollArea className="h-[500px] pr-4">
+          <ScrollArea className="h-125 pr-4">
             <div className="space-y-2">
               {mockProcessors.map((processor) => (
                 <Card
@@ -164,7 +164,7 @@ const ViewPaymentProcessor = () => {
                     />
                     <div>
                       <h3 className="font-medium">{processor.name}</h3>
-                      <p className="text-sm text-muted-foreground truncate max-w-[180px]">
+                      <p className="text-sm text-muted-foreground truncate max-w-45">
                         API: {processor.apiKey}
                       </p>
                     </div>

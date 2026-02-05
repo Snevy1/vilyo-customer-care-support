@@ -540,7 +540,7 @@ function SocialLinkCard({
             <h3 className="font-medium text-gray-800">{link.name}</h3>
             <div className="flex items-center justify-center gap-1 text-sm text-gray-500">
               <ExternalLink className="h-3 w-3" />
-              <span className="truncate max-w-[120px]">
+              <span className="truncate max-w-30">
                 {link.link.replace(/^https?:\/\//, '')}
               </span>
             </div>
@@ -633,7 +633,7 @@ function LoadingSkeleton() {
                     <Skeleton className="h-5 w-20" />
                     <Skeleton className="h-7 w-7 rounded" />
                   </div>
-                  <Skeleton className="h-[1px] w-full" />
+                  <Skeleton className="h-px w-full" />
                   <div className="flex flex-col items-center space-y-3">
                     <Skeleton className="h-14 w-14 rounded-full" />
                     <Skeleton className="h-4 w-24" />

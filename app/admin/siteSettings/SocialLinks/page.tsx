@@ -352,7 +352,7 @@ function SocialLinkCard({ link, onUpdate }: SocialLinkCardProps) {
             <h3 className="font-medium text-gray-800">{link.name}</h3>
             <div className="flex items-center justify-center gap-1 mt-1">
               <ExternalLink className="h-3 w-3 text-gray-500" />
-              <span className="text-xs text-gray-500 truncate max-w-[120px]">
+              <span className="text-xs text-gray-500 truncate max-w-30">
                 {link.link.replace(/^https?:\/\//, '')}
               </span>
             </div>
@@ -440,7 +440,7 @@ function LogoRow({ logo, onUpdate }: LogoRowProps) {
     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-gray-50 rounded-lg border">
       <div className="flex flex-col md:flex-row md:items-center gap-4">
         {/* Logo Preview */}
-        <div className="flex-shrink-0">
+        <div className="shrink-0">
           <div className="bg-white p-2 rounded border">
             <img
               src={previewImage || logo.image}
@@ -467,7 +467,7 @@ function LogoRow({ logo, onUpdate }: LogoRowProps) {
       
       {/* Upload Button */}
       {onUpdate && (
-        <div className="flex-shrink-0">
+        <div className="shrink-0">
           <Label htmlFor={`logo-upload-${logo.id}`} className="cursor-pointer">
             <Button
               variant="outline"

@@ -262,7 +262,7 @@ export default function Payments() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[200px]">
+                  <TableHead className="w-50">
                     <div className="flex items-center gap-2">
                       <span>Package</span>
                     </div>
