@@ -1,0 +1,1 @@
+ALTER TABLE "chatBotMetadata" ALTER COLUMN "organization_id" DROP NOT NULL;

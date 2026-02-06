@@ -64,6 +64,41 @@
       "when": 1769621119328,
       "tag": "0008_lovely_jack_murdock",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1769700595716,
+      "tag": "0009_greedy_thunderbolts",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1769700911889,
+      "tag": "0010_elite_wild_pack",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1769701746807,
+      "tag": "0011_silly_vance_astro",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1769793745145,
+      "tag": "0012_careless_fenris",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1769793821715,
+      "tag": "0013_uneven_iron_fist",
+      "breakpoints": true
     }
   ]
 }

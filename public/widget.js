@@ -13,7 +13,7 @@
             return;
         }
 
-       fetch("https://vilyo-customer-care-support.vercel.app/api/widget/session",
+       fetch("http://localhost:3000/api/widget/session",
         {
             method: "POST",
             headers: {
@@ -32,7 +32,7 @@
         }
 
         var iframe = document.createElement("iframe");
-        iframe.src = "https://vilyo-customer-care-support.vercel.app/embed?token=" + encodeURIComponent(data.token)
+        iframe.src = "http://localhost:3000/embed?token=" + encodeURIComponent(data.token)
 
         iframe.setAttribute("title", "Support Chat");
 

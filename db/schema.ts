@@ -65,6 +65,7 @@ export const chatBotMetadata = pgTable("chatBotMetadata", {
        .primaryKey()
        .default(sql `gen_random_uuid()`),
     user_email: text("user_email").notNull(),
+     organization_id: text("organization_id").notNull(),
     color: text("color").default("#4f39f6"),
     welcome_message: text("welcome_message").default(
         "Hi there, How can I help you today?"
@@ -111,6 +112,7 @@ export const conversation = pgTable("conversation", {
 });
 
 
+
  // Previous code
  /* export const conversation = pgTable("conversation", {
    id: text("id") 
@@ -143,6 +145,17 @@ export const conversation = pgTable("conversation", {
    allowed_domains:text("allowed_domains").array(),
    status:text("status").notNull().default("active"),
    created_at: text("created_at").default(sql`now()`),
+ });
+
+ export const supportTickets = pgTable("supportTickets",{
+    id: text("id") 
+       .primaryKey()
+       .default(sql `gen_random_uuid()`),
+       conversation_id: text("conversation_id").notNull(),
+       organization_id: text("organization_id").notNull(),
+       reason:text("reason").notNull(),
+       last_message:text("last_message").notNull(),
+       status:text("status").notNull().default("open")
  });
 
 

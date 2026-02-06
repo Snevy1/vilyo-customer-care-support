@@ -21,6 +21,7 @@ export async function GET(){
 
       if(!existingMetadata){
         const [newMetadata] = await db.insert(chatBotMetadata).values({
+            organization_id: user.organization_id,
             user_email: user.email
         }).returning();
 

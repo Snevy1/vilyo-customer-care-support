@@ -129,7 +129,7 @@ export async function GET(){
         
     } catch (error) {
 
-        console.error("Dashbioard Overview Error:", error);
+        console.error("Dashboard Overview Error:", error);
 
         return NextResponse.json({
             error: "Internal Server Error"
