@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
       type: 'magiclink',
       email: userEmail,
       options: {
-        redirectTo: `http://localhost:5173/api/auth/callback?org=${organizationId}&user=${userId}`
+        redirectTo: `https://atomic-crm-tau.vercel.app/bridge?org=${organizationId}&user=${userId}`
       }
     });
 
