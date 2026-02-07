@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
         await handleSubscriptionCancelled(event, service);
         break;
         
-      case 'subscription.not_renew':
+     /*  case 'subscription.not_renew':
         await handleSubscriptionExpired(event, service);
         break;
         
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
         
       case 'customer.subscription.deleted':
         await handleStripeSubscriptionDeleted(event, service);
-        break;
+        break; */
         
       default:
         console.log(`Unhandled event type: ${event.event || event.type}`);
