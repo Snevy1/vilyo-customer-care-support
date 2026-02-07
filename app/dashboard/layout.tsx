@@ -1,5 +1,52 @@
 
-import Sidebar from "@/components/dashboard/sidebar";
+
+
+import DashboardLayoutClient from "./layout-client";
+import { cookies } from "next/headers"
+
+export const metadata = {
+    title: "Vilyo Customer Support Chatbot-Dashboard ",
+    description: "Instantly resolve customer questions",
+}
+
+export default async function DashboardLayout({
+    children,
+}: Readonly<{ children: React.ReactNode }>) {
+    const cookieStore = await cookies();
+    const metadataCookie = cookieStore.get("metadata");
+
+    return (
+        <DashboardLayoutClient 
+            metadataCookie={metadataCookie?.value}
+        >
+            {children}
+        </DashboardLayoutClient>
+    )
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Oriiginal code
+
+
+/* import Sidebar from "@/components/dashboard/sidebar";
 import { cookies } from "next/headers"
 
 export const metadata = {
@@ -22,7 +69,7 @@ export  default async function DashboardLayout({
                <Sidebar />
               <div className="flex-1 flex flex-col md:ml-64 relative min-h-screen transition-all duration-300">
 
-                 {/* <Header /> */}
+                 {/* <Header /> }
                   
                   <main className="flex-1">
                     {children}
@@ -35,4 +82,4 @@ export  default async function DashboardLayout({
         </div>
     )
 
-}
+} */

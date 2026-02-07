@@ -6,9 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { toast } from 'sonner';
-import { Mail, MessageSquare, Bell, Webhook, TestTube2, Loader2, AlertCircle, Check, X } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { Mail, MessageSquare, Webhook, TestTube2, Loader2, AlertCircle, Check, X } from 'lucide-react';
 
 interface NotificationSettings {
   id?: string;
@@ -29,6 +27,7 @@ export function NotificationPreferences({ orgId }: { orgId: string }) {
   const [loading, setLoading] = useState(true);
   const [testingWebhook, setTestingWebhook] = useState(false);
   const [validatingUrl, setValidatingUrl] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   useEffect(() => {
     loadSettings();
@@ -47,7 +46,6 @@ export function NotificationPreferences({ orgId }: { orgId: string }) {
         organization_id: orgId
       });
     } catch (error) {
-      toast.error("Failed to load notification settings");
       console.error(error);
     } finally {
       setLoading(false);
@@ -60,12 +58,10 @@ export function NotificationPreferences({ orgId }: { orgId: string }) {
     try {
       new URL(url);
       if (!url.startsWith('https://')) {
-        toast.error("Webhook URL must use HTTPS for security");
         return false;
       }
       return true;
     } catch (error) {
-      toast.error("Please enter a valid URL (e.g., https://hooks.slack.com/...)");
       return false;
     }
   };
@@ -103,14 +99,14 @@ export function NotificationPreferences({ orgId }: { orgId: string }) {
         throw new Error(error.error || 'Update failed');
       }
 
-      toast.success("Preferences updated");
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
       
       // If webhook URL was updated, test it automatically
       if (key === 'webhook_url' && value && settings?.webhook_enabled) {
         setTimeout(() => testWebhook(), 1000);
       }
     } catch (error: any) {
-      toast.error(error.message || "Failed to update");
       // Reload original settings
       loadSettings();
     }
@@ -118,7 +114,6 @@ export function NotificationPreferences({ orgId }: { orgId: string }) {
 
   const testWebhook = async () => {
     if (!settings?.webhook_url || !settings.webhook_enabled) {
-      toast.error("Please enable webhook and enter a URL first");
       return;
     }
 
@@ -136,15 +131,12 @@ export function NotificationPreferences({ orgId }: { orgId: string }) {
       const result = await res.json();
       
       if (result.success) {
-        toast.success("Webhook test successful! Check your destination app.");
-        // Update verification status
         setSettings(prev => prev ? {
           ...prev,
           webhook_verification_status: 'verified',
           webhook_last_delivered_at: new Date().toISOString()
         } : null);
       } else {
-        toast.error(`Test failed: ${result.error || 'Unknown error'}`);
         setSettings(prev => prev ? {
           ...prev,
           webhook_verification_status: 'failed',
@@ -152,7 +144,7 @@ export function NotificationPreferences({ orgId }: { orgId: string }) {
         } : null);
       }
     } catch (error) {
-      toast.error("Test failed: Network error");
+      console.error(error);
     } finally {
       setTestingWebhook(false);
     }
@@ -162,127 +154,121 @@ export function NotificationPreferences({ orgId }: { orgId: string }) {
     if (!settings?.webhook_url) return null;
     
     const status = settings.webhook_verification_status;
-    const lastDelivered = settings.webhook_last_delivered_at;
     
     if (status === 'verified') {
       return (
-        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 ml-2">
-          <Check className="h-3 w-3 mr-1" /> Verified
-        </Badge>
+        <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center gap-1">
+          <Check className="h-3 w-3" /> Verified
+        </span>
       );
     }
     
     if (status === 'failed') {
       return (
-        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 ml-2">
-          <X className="h-3 w-3 mr-1" /> Failed
-        </Badge>
-      );
-    }
-    
-    if (lastDelivered) {
-      return (
-        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 ml-2">
-          Active
-        </Badge>
+        <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/10 text-red-500 flex items-center gap-1">
+          <X className="h-3 w-3" /> Failed
+        </span>
       );
     }
     
     return (
-      <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 ml-2">
+      <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-500">
         Not tested
-      </Badge>
+      </span>
     );
   };
 
   if (loading) {
     return (
-      <Card>
-        <CardContent className="flex justify-center p-8">
-          <Loader2 className="h-6 w-6 animate-spin" />
+      <Card className='border-white/5 bg-[#0A0A0E]'>
+        <CardContent className="flex justify-center items-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card>
+    <Card className='border-white/5 bg-[#0A0A0E]'>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Bell className="h-5 w-5" /> Notification Channels
+        <CardTitle className='text-base font-medium text-white'>
+          Notification Preferences
         </CardTitle>
         <CardDescription>
-          Configure how you want to be notified about new leads and bookings.
-          Changes are saved automatically.
+          Configure how you want to be notified about new leads and bookings. Changes are saved automatically.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-8">
+      <CardContent className="space-y-6">
         {/* Email Section */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-2 font-medium">
-                <Mail className="h-4 w-4" /> Email Notifications
+        <div className='bg-[#050509] border border-white/5 rounded-lg p-4'>
+          <div className="flex items-center justify-between mb-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Mail className="h-4 w-4 text-indigo-500" />
+                <h3 className="text-white font-medium text-sm">Email Notifications</h3>
               </div>
-              <div className="text-xs text-muted-foreground">
+              <p className="text-xs text-zinc-500">
                 Send email alerts to your inbox
-              </div>
+              </p>
             </div>
             <Switch 
               checked={settings?.email_enabled || false}
               onCheckedChange={(v) => updateSetting('email_enabled', v)}
               disabled={loading}
+              className='data-[state=checked]:bg-indigo-600 cursor-pointer'
             />
           </div>
 
           {settings?.email_enabled && (
-            <div className="space-y-2">
-              <Label htmlFor="notification_email">Custom Email Address</Label>
+            <div className="space-y-2 pt-3 border-t border-white/5">
+              <Label className="text-zinc-400 text-xs">Custom Email Address</Label>
               <Input
-                id="notification_email"
                 placeholder="notifications@yourcompany.com"
                 value={settings.notification_email || ''}
                 onChange={(e) => updateSetting('notification_email', e.target.value)}
                 disabled={loading}
                 type="email"
+                className='bg-zinc-900 border-white/10 text-white placeholder:text-zinc-600 h-9'
               />
-              <p className="text-xs text-muted-foreground">
-                Leave empty to use your account email: {settings.notification_email || 'owner@email.com'}
+              <p className="text-xs text-zinc-600">
+                Leave empty to use your account email
               </p>
             </div>
           )}
         </div>
 
         {/* SMS Section */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-2 font-medium">
-                <MessageSquare className="h-4 w-4" /> SMS Notifications
+        <div className='bg-[#050509] border border-white/5 rounded-lg p-4'>
+          <div className="flex items-center justify-between mb-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="h-4 w-4 text-indigo-500" />
+                <h3 className="text-white font-medium text-sm">SMS Notifications</h3>
               </div>
-              <div className="text-xs text-muted-foreground">
+              <p className="text-xs text-zinc-500">
                 Instant text messages via Twilio
-              </div>
+              </p>
             </div>
             <Switch 
               checked={settings?.sms_enabled || false}
               onCheckedChange={(v) => updateSetting('sms_enabled', v)}
               disabled={loading}
+              className='data-[state=checked]:bg-indigo-600'
             />
           </div>
 
           {settings?.sms_enabled && (
-            <div className="space-y-2">
-              <Label htmlFor="notification_phone">Phone Number</Label>
+            <div className="space-y-2 pt-3 border-t border-white/5">
+              <Label className="text-zinc-400 text-xs">Phone Number</Label>
               <Input
-                id="notification_phone"
                 placeholder="+1234567890"
                 value={settings.notification_phone || ''}
                 onChange={(e) => updateSetting('notification_phone', e.target.value)}
                 disabled={loading}
                 type="tel"
+                className='bg-zinc-900 border-white/10 text-white placeholder:text-zinc-600 h-9'
               />
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-zinc-600">
                 International format required (e.g., +1234567890)
               </p>
             </div>
@@ -290,73 +276,71 @@ export function NotificationPreferences({ orgId }: { orgId: string }) {
         </div>
 
         {/* Webhook Section */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-2 font-medium">
-                <Webhook className="h-4 w-4" /> Webhook Integration
+        <div className='bg-[#050509] border border-white/5 rounded-lg p-4'>
+          <div className="flex items-center justify-between mb-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Webhook className="h-4 w-4 text-indigo-500" />
+                <h3 className="text-white font-medium text-sm">Webhook Integration</h3>
                 {getWebhookStatusBadge()}
               </div>
-              <div className="text-xs text-muted-foreground">
+              <p className="text-xs text-zinc-500">
                 Send real-time data to external apps
-              </div>
+              </p>
             </div>
             <Switch 
               checked={settings?.webhook_enabled || false}
               onCheckedChange={(v) => updateSetting('webhook_enabled', v)}
               disabled={loading}
+              className='data-[state=checked]:bg-indigo-600'
             />
           </div>
 
           {settings?.webhook_enabled && (
-            <div className="space-y-4">
+            <div className="space-y-4 pt-3 border-t border-white/5">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="webhook_url">Webhook URL</Label>
+                  <Label className="text-zinc-400 text-xs">Webhook URL</Label>
                   {(settings?.webhook_failure_count ?? 0) > 0 && (
-                    <span className="text-xs text-red-600">
-                 {settings.webhook_failure_count} recent failures
+                    <span className="text-xs text-red-500">
+                      {settings.webhook_failure_count} recent failures
                     </span>
-)}
-
+                  )}
                 </div>
                 <div className="flex gap-2">
                   <Input
-                    id="webhook_url"
                     placeholder="https://hooks.slack.com/services/..."
                     value={settings.webhook_url || ''}
                     onChange={(e) => updateSetting('webhook_url', e.target.value)}
                     disabled={loading || validatingUrl}
-                    className="flex-1"
+                    className='flex-1 bg-zinc-900 border-white/10 text-white placeholder:text-zinc-600 h-9'
                     type="url"
                   />
                   <Button
                     onClick={testWebhook}
                     disabled={!settings.webhook_url || testingWebhook || loading}
-                    variant="outline"
-                    size="sm"
+                    className='bg-indigo-600 hover:bg-indigo-700 text-white h-9 px-3'
                   >
                     {testingWebhook ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <TestTube2 className="h-4 w-4" />
                     )}
-                    <span className="ml-2 hidden sm:inline">Test</span>
                   </Button>
                 </div>
                 
                 {validatingUrl && (
-                  <p className="text-xs text-muted-foreground flex items-center">
-                    <Loader2 className="h-3 w-3 animate-spin mr-1" /> Validating URL...
+                  <p className="text-xs text-zinc-500 flex items-center gap-1">
+                    <Loader2 className="h-3 w-3 animate-spin" /> Validating URL...
                   </p>
                 )}
                 
                 {settings.webhook_url && (
-                  <div className="text-xs space-y-1">
-                    <p className="text-muted-foreground">
+                  <div className="text-xs space-y-2 mt-3">
+                    <p className="text-zinc-500">
                       POST requests will be sent with this JSON structure:
                     </p>
-                    <pre className="bg-muted p-2 rounded text-xs overflow-x-auto">
+                    <pre className="bg-zinc-900/50 border border-white/5 p-3 rounded text-xs overflow-x-auto text-zinc-400">
 {`{
   "event": "booking.created",
   "timestamp": "2024-01-01T00:00:00Z",
@@ -371,33 +355,33 @@ export function NotificationPreferences({ orgId }: { orgId: string }) {
               </div>
 
               {settings.webhook_last_delivered_at && (
-                <div className="text-xs text-muted-foreground flex items-center">
-                  <Check className="h-3 w-3 mr-1 text-green-600" />
+                <div className="text-xs text-emerald-500 flex items-center gap-1">
+                  <Check className="h-3 w-3" />
                   Last successful delivery: {new Date(settings.webhook_last_delivered_at).toLocaleString()}
                 </div>
               )}
 
-              <div className="rounded-lg border p-3 bg-muted/30">
+              <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-3">
                 <div className="flex items-start gap-2">
-                  <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5" />
-                  <div className="space-y-1">
-                    <p className="text-xs font-medium">Popular Webhook Services</p>
-                    <ul className="text-xs text-muted-foreground list-disc list-inside space-y-1">
+                  <AlertCircle className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-zinc-300">Popular Webhook Services</p>
+                    <ul className="text-xs text-zinc-500 space-y-1">
                       <li>
-                        <strong>Slack:</strong>{" "}
-                        <code className="text-xs">https://hooks.slack.com/services/...</code>
+                        <span className="text-zinc-400">Slack:</span>{" "}
+                        <code className="text-xs text-zinc-500">https://hooks.slack.com/services/...</code>
                       </li>
                       <li>
-                        <strong>Discord:</strong>{" "}
-                        <code className="text-xs">https://discord.com/api/webhooks/...</code>
+                        <span className="text-zinc-400">Discord:</span>{" "}
+                        <code className="text-xs text-zinc-500">https://discord.com/api/webhooks/...</code>
                       </li>
                       <li>
-                        <strong>Zapier:</strong>{" "}
-                        <code className="text-xs">https://hooks.zapier.com/hooks/...</code>
+                        <span className="text-zinc-400">Zapier:</span>{" "}
+                        <code className="text-xs text-zinc-500">https://hooks.zapier.com/hooks/...</code>
                       </li>
                       <li>
-                        <strong>Make (Integromat):</strong>{" "}
-                        <code className="text-xs">https://hook.make.com/...</code>
+                        <span className="text-zinc-400">Make:</span>{" "}
+                        <code className="text-xs text-zinc-500">https://hook.make.com/...</code>
                       </li>
                     </ul>
                   </div>
@@ -406,6 +390,14 @@ export function NotificationPreferences({ orgId }: { orgId: string }) {
             </div>
           )}
         </div>
+
+        {/* Success Message */}
+        {saveSuccess && (
+          <div className='flex items-center gap-2 text-sm text-emerald-500'>
+            <span className='w-2 h-2 bg-emerald-500 rounded-full'></span>
+            Preferences saved successfully
+          </div>
+        )}
       </CardContent>
     </Card>
   );

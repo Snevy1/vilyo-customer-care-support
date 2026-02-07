@@ -1,6 +1,7 @@
 // lib/notifications-enhanced.ts
 import { db } from "@/db/client";
-import { organizations, notificationSettings, webhookLogs, notificationLogs } from "@/db/schema";
+import { organizations, notificationSettings, webhookLogs, notificationLogs,notifications } from "@/db/schema";
+
 import { eq} from "drizzle-orm";
 import { sendEmailNotification } from "../email-notifications";
 import twilio from "twilio";
@@ -83,7 +84,7 @@ const PRIORITIES = {
 // =====================================================
 // TYPES
 // =====================================================
-type NotificationType = "APPOINTMENT_BOOKED" | "LEAD_GENERATED" | "PAYMENT_RECEIVED" | "CANCELLATION";
+type NotificationType = "APPOINTMENT_BOOKED" | "LEAD_GENERATED" | "PAYMENT_RECEIVED" | "CANCELLATION" | "ESCALATION";
 
 interface NotificationJobData {
   idempotencyKey: string;
@@ -373,6 +374,42 @@ export async function notifyOwner(params: {
 
   const cleanTitle = formatters.sanitize(title, 200);
   const cleanMessage = formatters.sanitize(message, 1000);
+
+  // =====================================================
+  // 1. PERSISTENCE: Save to the Activity Feed (In-App)
+  // =====================================================
+
+  await db.insert(notifications).values({
+    organization_id: orgId,
+    type: type, // Matches  ActivityType 'HOT_LEAD', 'ESCALATION', etc.
+    title: cleanTitle,
+    description: cleanMessage,
+    is_read: false,
+  }).catch(e => console.error("Activity Feed Log Error:", e));
+
+
+
+  // =====================================================
+  // 2. REAL-TIME: Emit Socket Event
+  // =====================================================
+  try {
+    // This triggers the EscalationAlert.tsx on the frontend
+    await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/socket/emit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event: `org_${orgId}_escalation`,
+        payload: { 
+          sessionId: data?.sessionId || 'system', 
+          reason: cleanTitle, 
+          user_message: cleanMessage 
+        }
+      })
+    });
+  } catch (socketError) {
+    console.error('Socket notification failed:', socketError);
+  }
+
   const idempotencyBase = `${orgId}:${type}:${data?.id ?? Date.now()}`;
   const channels: string[] = [];
   const jobs: Promise<any>[] = [];

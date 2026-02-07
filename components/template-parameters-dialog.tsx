@@ -64,7 +64,7 @@ export function TemplateParametersDialog({
     try {
       const formattedParameters = formatParametersForTemplate(parameterInfo, parameterValues);
 
-      const response = await fetch('/api/templates/send', {
+      const response = await fetch('/api/whatsapp-api/templates/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -103,7 +103,7 @@ export function TemplateParametersDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-125">
         <DialogHeader>
           <div className="flex items-center gap-2">
             <Button
@@ -129,7 +129,7 @@ export function TemplateParametersDialog({
           </div>
         )}
 
-        <ScrollArea className="max-h-[400px] pr-4">
+        <ScrollArea className="max-h-100 pr-4">
           <div className="space-y-4">
             {parameterInfo.parameters.map((param) => (
               <div key={param.name} className="space-y-2">

@@ -12,6 +12,8 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Trash2, Save, Loader2, AlertCircle } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
+import { NotificationPreferences } from '@/components/notification';
+import { GoogleCalendarConnect } from '@/components/GoogleCalendarConnect';
 
 interface OrganizationData {
   id: string;
@@ -196,6 +198,18 @@ useEffect(() => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Notification Preferences - NEW */}
+      {organizationData?.id && (
+        <NotificationPreferences orgId={organizationData.id} />
+      )}
+
+       {/* Notification Preferences - NEW */}
+      {organizationData?.id && (
+        <GoogleCalendarConnect orgId={organizationData.id} />
+      )}
+
+      
 
       {/* Lead Scoring Rules Card */}
       <Card className='border-white/5 bg-[#0A0A0E]'>

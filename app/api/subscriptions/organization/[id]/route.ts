@@ -1,20 +1,23 @@
 // app/api/subscriptions/[id]/route.ts - Single subscription operations
 import { NextRequest, NextResponse } from 'next/server';
-import { PaymentProviderFactory } from '../factories/payment-provider.factory';
+import { PaymentProviderFactory } from '../../factories/payment-provider.factory';
 import { SubscriptionService } from '@/lib/subscriptions/services/subscription-service';
 import { cookies } from 'next/headers';
 
 // Helper to get subscription service with correct provider
-async function getSubscriptionService(subscriptionId: string, productType: string) {
-  // In production, you'd get the provider from the subscription record
-  // For now, we'll assume paystack or get from request/params
-  const provider = 'paystack'; // Default or get from subscription
+
+type  ProductType  = 'web_chat'| 'whatsapp' | 'crm'
+type providerType = "paystack" | "stripe" | "paypal"
+async function getSubscriptionService(subscriptionId: string, productType: string, provider:providerType, organizationId?:string) {
   
   const paymentProvider = PaymentProviderFactory.createProvider(provider);
   return new SubscriptionService(paymentProvider);
 }
 
-// GET - Get single subscription
+
+
+// GET - Get subscription by organizationId/ organizationId
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -28,12 +31,14 @@ export async function GET(
     }
     
     const { organization_id } = JSON.parse(userSession);
-    const subscriptionId = params.id;
+    const subscriptionId = await params.id;
     
-    // Get product type from query params
+    // Get query parameters
     const url = new URL(request.url);
-    const productType = url.searchParams.get('productType') as any;
+    const productType = url.searchParams.get('productType') as ProductType;
+    const organizationIdParam = url.searchParams.get('organizationId');
     
+    // Validate at least one lookup method is provided
     if (!productType) {
       return NextResponse.json(
         { error: 'productType query parameter is required' },
@@ -41,27 +46,92 @@ export async function GET(
       );
     }
     
-    const service = await getSubscriptionService(subscriptionId, productType);
-    const subscription = await service.getSubscriptionById(subscriptionId, productType);
-    
-    if (!subscription) {
+    // Validate productType is valid
+    const validProductTypes = ['web_chat', 'whatsapp', 'crm'];
+    if (!validProductTypes.includes(productType)) {
       return NextResponse.json(
-        { error: 'Subscription not found' },
-        { status: 404 }
+        { 
+          error: 'Invalid product type. Must be one of: web_chat, whatsapp, crm',
+          validTypes: validProductTypes 
+        },
+        { status: 400 }
+      );
+    }
+    
+    const service = await getSubscriptionService(subscriptionId, productType, 'stripe', organization_id );
+    let subscription;
+    
+    // Determine which method to use based on parameters
+    if (subscriptionId && subscriptionId !== 'organization') {
+      // Using subscription ID lookup (original behavior)
+      subscription = await service.getSubscriptionById(subscriptionId, productType);
+      
+      if (!subscription) {
+        return NextResponse.json(
+          { error: 'Subscription not found with provided subscriptionId' },
+          { status: 404 }
+        );
+      }
+    } else if (organizationIdParam) {
+      // Using organization ID lookup (new behavior)
+      subscription = await service.getSubscriptionByOrganizationId(organizationIdParam, productType);   
+      if (!subscription) {
+        return NextResponse.json(
+          { error: 'Subscription not found for the provided organizationId' },
+          { status: 404 }
+        );
+      }
+    } else {
+      return NextResponse.json(
+        { error: 'Either subscriptionId in path or organizationId query parameter is required' },
+        { status: 400 }
       );
     }
     
     // Check if user has access to this subscription
-    if (subscription.organizationId !== organization_id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+     // will do this later
+     if (subscription.organizationId !== organization_id) {
+      return NextResponse.json(
+        { 
+          error: 'Forbidden: You do not have access to this subscription',
+          userOrganizationId: organization_id,
+          subscriptionOrganizationId: subscription.organizationId
+        },
+        { status: 403 }
+      );
+    } 
     
-    return NextResponse.json({ success: true, subscription });
+    return NextResponse.json({ 
+      success: true, 
+      subscription,
+      lookupMethod: subscriptionId !== 'organization' ? 'bySubscriptionId' : 'byOrganizationId'
+    });
     
   } catch (error: any) {
     console.error('Error getting subscription:', error);
+    
+    // Handle validation errors differently
+    if (error.message.includes('required') || error.message.includes('Invalid')) {
+      return NextResponse.json(
+        { error: `Validation error: ${error.message}` },
+        { status: 400 }
+      );
+    }
+    
+    // Handle database errors
+    if (error.message.includes('database') || error.message.includes('connection')) {
+      return NextResponse.json(
+        { error: 'Database error occurred' },
+        { status: 503 }
+      );
+    }
+    
     return NextResponse.json(
-      { error: `Failed to get subscription: ${error.message}` },
+      { 
+        error: 'Failed to get subscription',
+        message: error.message,
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      },
       { status: 500 }
     );
   }
@@ -99,7 +169,7 @@ export async function PUT(
     }
     
     // Verify the user has access to this subscription
-    const service = await getSubscriptionService(subscriptionId, productType);
+    const service = await getSubscriptionService(subscriptionId, productType, 'stripe');
     const currentSub = await service.getSubscriptionById(subscriptionId, productType);
     
     if (!currentSub || currentSub.organizationId !== organization_id) {
@@ -160,7 +230,7 @@ export async function PATCH(
       );
     }
     
-    const service = await getSubscriptionService(subscriptionId, productType);
+    const service = await getSubscriptionService(subscriptionId, productType, 'stripe', organization_id);
     const currentSub = await service.getSubscriptionById(subscriptionId, productType);
     
     if (!currentSub || currentSub.organizationId !== organization_id) {
@@ -254,7 +324,7 @@ export async function DELETE(
       );
     }
     
-    const service = await getSubscriptionService(subscriptionId, productType);
+    const service = await getSubscriptionService(subscriptionId, productType, 'stripe');
     const currentSub = await service.getSubscriptionById(subscriptionId, productType);
     
     if (!currentSub || currentSub.organizationId !== organization_id) {

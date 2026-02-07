@@ -26,7 +26,8 @@ export async function PATCH(
         
         
 
-  const { tenantId } = params;
+  const { tenantId } =  await params;
+
   const { bot_enabled } = await req.json();
 
   if (typeof bot_enabled !== 'boolean') {
@@ -76,7 +77,7 @@ export async function GET(
           return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const { tenantId } = params;
+        const { tenantId } = await params;
         
     const [tenant] = await db
       .select()

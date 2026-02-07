@@ -2,7 +2,7 @@
 
 import { useEffect, useState, forwardRef, useImperativeHandle, useCallback } from 'react';
 import { format, isValid, isToday, isYesterday } from 'date-fns';
-import { RefreshCw, Search } from 'lucide-react';
+import { RefreshCw, Search, MessageSquarePlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAutoPolling } from '@/hooks/use-auto-polling';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
-type Conversation = {
+// --- Types ---
+export type Conversation = {
   id: string;
   phoneNumber: string;
   status: string;
@@ -20,6 +21,7 @@ type Conversation = {
   metadata?: Record<string, unknown>;
   contactName?: string;
   messagesCount?: number;
+  isHumanTakeover?: boolean;
   lastMessage?: {
     content: string;
     direction: string;
@@ -27,11 +29,23 @@ type Conversation = {
   };
 };
 
+type Props = {
+  onSelectConversation: (conversation: Conversation) => void;
+  onDataLoaded?: (conversations: Conversation[]) => void;
+  selectedConversationId?: string;
+  isHidden?: boolean;
+};
+
+export type ConversationListRef = {
+  refresh: () => Promise<Conversation[]>;
+  selectByPhoneNumber: (phoneNumber: string) => void;
+};
+
+// --- Helpers ---
 function formatConversationDate(timestamp: string): string {
   try {
     const date = new Date(timestamp);
     if (!isValid(date)) return '';
-
     if (isToday(date)) return format(date, 'HH:mm');
     if (isYesterday(date)) return 'Yesterday';
     return format(date, 'MMM d');
@@ -43,210 +57,224 @@ function formatConversationDate(timestamp: string): string {
 function getAvatarInitials(contactName?: string, phoneNumber?: string): string {
   if (contactName) {
     const words = contactName.trim().split(/\s+/);
-    if (words.length >= 2) {
-      return (words[0][0] + words[1][0]).toUpperCase();
-    }
+    if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
     return contactName.slice(0, 2).toUpperCase();
   }
-
-  if (phoneNumber) {
-    const digits = phoneNumber.replace(/\D/g, '');
-    return digits.slice(-2);
-  }
-
-  return '??';
+  return phoneNumber?.slice(-2) || '??';
 }
 
-type Props = {
-  onSelectConversation: (conversation: Conversation) => void;
-  selectedConversationId?: string;
-  isHidden?: boolean;
-};
-
-export type ConversationListRef = {
-  refresh: () => Promise<Conversation[]>;
-  selectByPhoneNumber: (phoneNumber: string) => void;
-};
-
+// --- Component ---
 export const ConversationList = forwardRef<ConversationListRef, Props>(
-  ({ onSelectConversation, selectedConversationId, isHidden = false }, ref) => {
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  ({ onSelectConversation, onDataLoaded, selectedConversationId, isHidden = false }, ref) => {
+    const [conversations, setConversations] = useState<Conversation[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
 
-  const fetchConversations = useCallback(async () => {
-    try {
-      const response = await fetch('/api/conversations');
-      const data = await response.json();
-      setConversations(data.data || []);
-    } catch (error) {
-      console.error('Error fetching conversations:', error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
+    const fetchConversations = useCallback(async () => {
+      try {
+        const response = await fetch('/api/whatsapp-api/conversations');
+        const data = await response.json();
+        const list = data.data || [];
+        setConversations(list);
+        
+        // Push data to parent for Contacts/Settings syncing
+        if (onDataLoaded) onDataLoaded(list);
+        
+      } catch (error) {
+        console.error('Error fetching conversations:', error);
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    }, [onDataLoaded]);
+
+    useEffect(() => {
+      fetchConversations();
+    }, [fetchConversations]);
+
+    // Auto-polling (Every 10 seconds for real-time feel)
+    const { isPolling } = useAutoPolling({
+      interval: 10000,
+      enabled: true,
+      onPoll: fetchConversations
+    });
+
+    useImperativeHandle(ref, () => ({
+      refresh: async () => {
+        setRefreshing(true);
+        const response = await fetch('/api/whatsapp-api/conversations');
+        const data = await response.json();
+        const list = data.data || [];
+        setConversations(list);
+        setRefreshing(false);
+        if (onDataLoaded) onDataLoaded(list);
+        return list;
+      },
+      selectByPhoneNumber: (phoneNumber: string) => {
+        const conv = conversations.find(c => c.phoneNumber === phoneNumber);
+        if (conv) onSelectConversation(conv);
+      }
+    }));
+
+    const filteredConversations = conversations.filter((conv) => {
+      const query = searchQuery.toLowerCase();
+      return (
+        conv.phoneNumber.toLowerCase().includes(query) ||
+        conv.contactName?.toLowerCase().includes(query)
+      );
+    });
+
+    if (loading) {
+      return (
+        <div className={cn("w-full md:w-96 border-r border-gray-100 bg-white flex flex-col", isHidden && "hidden md:flex")}>
+          <div className="p-6 space-y-4">
+            <Skeleton className="h-8 w-24" />
+            <Skeleton className="h-10 w-full rounded-xl" />
+          </div>
+          <div className="flex-1 px-4 space-y-4">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex gap-4 p-2">
+                <Skeleton className="h-12 w-12 rounded-2xl shrink-0" />
+                <div className="flex-1 space-y-2 py-1">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-full" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
     }
-  }, []);
 
-  useEffect(() => {
-    fetchConversations();
-  }, [fetchConversations]);
-
-  const handleRefresh = () => {
-    setRefreshing(true);
-    fetchConversations();
-  };
-
-  // Auto-polling for conversations (every 10 seconds)
-  const { isPolling } = useAutoPolling({
-    interval: 10000,
-    enabled: true,
-    onPoll: fetchConversations
-  });
-
-  const selectByPhoneNumber = (phoneNumber: string) => {
-    const conversation = conversations.find(conv => conv.phoneNumber === phoneNumber);
-    if (conversation) {
-      onSelectConversation(conversation);
-    }
-  };
-
-  useImperativeHandle(ref, () => ({
-    refresh: async () => {
-      setRefreshing(true);
-      const response = await fetch('/api/conversations');
-      const data = await response.json();
-      const newConversations = data.data || [];
-      setConversations(newConversations);
-      setRefreshing(false);
-      return newConversations;
-    },
-    selectByPhoneNumber
-  }));
-
-  const filteredConversations = conversations.filter((conv) => {
-    const query = searchQuery.toLowerCase();
-    return (
-      conv.phoneNumber.toLowerCase().includes(query) ||
-      conv.contactName?.toLowerCase().includes(query)
-    );
-  });
-
-  if (loading) {
     return (
       <div className={cn(
-        "w-full md:w-96 border-r border-[#d1d7db] bg-white flex flex-col",
+        "w-full md:w-96 border-r border-gray-100 bg-white flex flex-col z-10 transition-all",
         isHidden && "hidden md:flex"
       )}>
-        <div className="p-4 border-b border-[#d1d7db] bg-[#f0f2f5]">
-          <div className="flex items-center justify-between mb-3">
-            <Skeleton className="h-7 w-20" />
-            <Skeleton className="h-9 w-24" />
-          </div>
-          <Skeleton className="h-10 w-full rounded-lg" />
-        </div>
-        <div className="flex-1 p-3 space-y-3">
-          {[1, 2, 3, 4, 5, 6, 7].map((i) => (
-            <div key={i} className="flex gap-3 p-3">
-              <Skeleton className="h-12 w-12 rounded-full flex-shrink-0" />
-              <div className="flex-1 space-y-2">
-                <Skeleton className="h-4 w-32" />
-                <Skeleton className="h-3 w-48" />
-              </div>
+        {/* Header Section */}
+        <div className="p-6 bg-white/80 backdrop-blur-md sticky top-0 z-20">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Messages</h1>
+              {isPolling && (
+                <span className="flex h-2 w-2 rounded-full bg-blue-500 animate-pulse" title="Live sync active" />
+              )}
             </div>
-          ))}
+            <div className="flex gap-1">
+              <Button
+                onClick={() => fetchConversations()}
+                disabled={refreshing}
+                variant="ghost"
+                size="icon"
+                className="text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl"
+              >
+                <RefreshCw className={cn("h-5 w-5", refreshing && "animate-spin")} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl"
+              >
+                <MessageSquarePlus className="h-5 w-5" />
+              </Button>
+            </div>
+          </div>
+
+          <div className="relative group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+            <Input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search conversations..."
+              className="pl-11 bg-gray-50 border-transparent focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 rounded-2xl h-11 transition-all"
+            />
+          </div>
         </div>
+
+        {/* List Section */}
+        <ScrollArea className="flex-1">
+          <div className="px-3 pb-6">
+            {filteredConversations.length === 0 ? (
+              <div className="py-20 text-center">
+                <p className="text-gray-400 font-medium">
+                  {searchQuery ? 'No results found' : 'No messages yet'}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {filteredConversations.map((conversation) => {
+                  const isActive = selectedConversationId === conversation.id;
+                  return (
+                    <button
+                      key={conversation.id}
+                      onClick={() => onSelectConversation(conversation)}
+                      className={cn(
+                        'w-full p-4 rounded-3xl flex gap-4 text-left transition-all duration-200 group relative',
+                        isActive 
+                          ? 'bg-blue-50 shadow-sm' 
+                          : 'hover:bg-gray-50 border-transparent'
+                      )}
+                    >
+                      {/* Active Indicator Bar */}
+                      {isActive && (
+                        <div className="absolute left-0 top-4 bottom-4 w-1 bg-blue-600 rounded-r-full" />
+                      )}
+
+                      <Avatar className="h-14 w-14 shrink-0 rounded-2xl shadow-sm border-2 border-white">
+                        <AvatarFallback className={cn(
+                          "text-lg font-bold transition-colors",
+                          isActive ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-400 group-hover:bg-blue-100 group-hover:text-blue-600"
+                        )}>
+                          {getAvatarInitials(conversation.contactName, conversation.phoneNumber)}
+                        </AvatarFallback>
+                      </Avatar>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-baseline mb-1">
+                          <h3 className={cn(
+                            "font-bold truncate transition-colors",
+                            isActive ? "text-blue-900" : "text-gray-900"
+                          )}>
+                            {conversation.contactName || conversation.phoneNumber}
+                          </h3>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 shrink-0 ml-2">
+                            {formatConversationDate(conversation.lastActiveAt)}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          {conversation.lastMessage ? (
+                            <p className={cn(
+                              "text-sm line-clamp-1 flex-1",
+                              isActive ? "text-blue-700/80" : "text-gray-500"
+                            )}>
+                              {conversation.lastMessage.direction === 'outbound' && (
+                                <span className="text-blue-500 font-bold mr-1">✓</span>
+                              )}
+                              {conversation.lastMessage.content}
+                            </p>
+                          ) : (
+                            <p className="text-sm italic text-gray-300">No messages yet</p>
+                          )}
+                          
+                          {/* Human Takeover Badge */}
+                          {conversation.isHumanTakeover && (
+                            <div className="h-2 w-2 rounded-full bg-amber-500 shadow-sm shadow-amber-200" title="Human Intervention" />
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </ScrollArea>
       </div>
     );
   }
-
-  return (
-    <div className={cn(
-      "w-full md:w-96 border-r border-[#d1d7db] bg-white flex flex-col",
-      isHidden && "hidden md:flex"
-    )}>
-      <div className="p-4 border-b border-[#d1d7db] bg-[#f0f2f5]">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-semibold text-[#111b21]">Chats</h1>
-            {isPolling && (
-              <div
-                className="h-2 w-2 rounded-full bg-green-500 animate-pulse"
-                title="Auto-updating"
-              />
-            )}
-          </div>
-          <Button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            variant="ghost"
-            size="icon"
-            className="text-[#667781] hover:bg-[#d1d7db]/30"
-          >
-            <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
-          </Button>
-        </div>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#667781]" />
-          <Input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search or start new chat"
-            className="pl-9 bg-white border-[#d1d7db] focus-visible:ring-[#00a884] rounded-lg"
-          />
-        </div>
-      </div>
-
-      <ScrollArea className="flex-1 h-0 overflow-hidden">
-        {filteredConversations.length === 0 ? (
-          <div className="p-4 text-center text-[#667781]">
-            {searchQuery ? 'No conversations found' : 'No conversations yet'}
-          </div>
-        ) : (
-          <div className="w-full overflow-hidden">
-          {filteredConversations.map((conversation) => (
-            <button
-              key={conversation.id}
-              onClick={() => onSelectConversation(conversation)}
-              className={cn(
-                'w-full p-3 pr-4 border-b border-[#e9edef] hover:bg-[#f0f2f5] text-left transition-colors relative overflow-hidden',
-                selectedConversationId === conversation.id && 'bg-[#f0f2f5]'
-              )}
-            >
-              <div className="flex gap-3 items-start overflow-hidden">
-                <Avatar className="h-12 w-12 flex-shrink-0">
-                  <AvatarFallback className="bg-[#d1d7db] text-[#111b21] text-sm font-medium">
-                    {getAvatarInitials(conversation.contactName, conversation.phoneNumber)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0 flex justify-between items-start gap-4 overflow-hidden">
-                  <div className="flex-1 min-w-0 overflow-hidden">
-                    <p className="font-medium text-[#111b21] truncate">
-                      {conversation.contactName || conversation.phoneNumber}
-                    </p>
-                    {conversation.lastMessage && (
-                      <p className="text-sm text-[#667781] truncate mt-0.5">
-                        {conversation.lastMessage.direction === 'outbound' && (
-                          <span className="text-[#53bdeb]">✓ </span>
-                        )}
-                        {conversation.lastMessage.content}
-                      </p>
-                    )}
-                  </div>
-                  <span className="text-xs text-[#667781] flex-shrink-0 mt-0.5 ml-4">
-                    {formatConversationDate(conversation.lastActiveAt)}
-                  </span>
-                </div>
-              </div>
-            </button>
-          ))
-          }
-          </div>
-        )}
-      </ScrollArea>
-    </div>
-  );
-});
+);
 
 ConversationList.displayName = 'ConversationList';

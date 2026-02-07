@@ -10,7 +10,7 @@ export async function PATCH(
 ) {
   try {
     const { timezone } = await req.json();
-    const { orgId } = params;
+    const { orgId } = await params;
 
     await db.update(organizations)
       .set({ timezone, updated_at: new Date() })
@@ -28,7 +28,7 @@ export async function DELETE(
   { params }: { params: { orgId: string } }
 ) {
   try {
-    const { orgId } = params;
+    const { orgId } = await params;
 
     // Remove the connection from the DB
     // Because of  'cascade' onDelete, this is safe.

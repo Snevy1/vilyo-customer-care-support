@@ -26,7 +26,7 @@ export async function POST(
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
 
-      const { conversationId } = params;
+      const { conversationId } = await params;
       const { agentId } = await req.json();
 
       const { email, organization_id } = JSON.parse(userSession);
@@ -75,10 +75,26 @@ export async function DELETE(
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
 
-      const { email, organization_id } = JSON.parse(userSession);
+      const { email } = JSON.parse(userSession);
 
 
-  const { conversationId } = params;
+  
+    const { conversationId } = await params;
+
+    // 1. Verify the conversation actually exists in the DB
+    const [existing] = await db
+      .select()
+      .from(conversation)
+      .where(eq(conversation.id, conversationId))
+      .limit(1);
+
+    if (!existing) {
+      console.error(`Attempted handoff for non-existent conversation: ${conversationId}`);
+      return NextResponse.json({ error: "Conversation not found in database" }, { status: 404 });
+    }
+
+
+
     await db
       .update(conversation)
       .set({
@@ -122,7 +138,20 @@ export async function GET(
       }
 
 
-  const { conversationId } = params;
+    const { conversationId } = await params;
+
+    // 1. Verify the conversation actually exists in the DB
+    const [existing] = await db
+      .select()
+      .from(conversation)
+      .where(eq(conversation.id, conversationId))
+      .limit(1);
+
+    if (!existing) {
+      console.error(`Attempted handoff for non-existent conversation: ${conversationId}`);
+      return NextResponse.json({ error: "Conversation not found in database" }, { status: 404 });
+    }
+
     const [conv] = await db
       .select()
       .from(conversation)
