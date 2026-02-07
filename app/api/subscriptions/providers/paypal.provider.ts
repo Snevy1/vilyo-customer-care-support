@@ -41,7 +41,7 @@ export class PayPalProvider implements PaymentProvider {
     
     const data = await response.json();
     this.accessToken = data.access_token;
-    return this.accessToken;
+    return this.accessToken!;
   }
   
   private async makeRequest(endpoint: string, options?: RequestInit) {
