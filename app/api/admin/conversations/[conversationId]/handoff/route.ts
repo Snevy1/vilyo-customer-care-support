@@ -1,5 +1,3 @@
-
-
 import { NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { conversation, agentActivity } from "@/db/schema";
@@ -9,28 +7,19 @@ import { cookies } from "next/headers";
 // Enable human takeover for a specific conversation
 export async function POST(
   req: Request,
-  { params }: { params: { conversationId: string } }
+  { params }: { params: Promise<{ conversationId: string }> }
 ) {
-  
-      
-
-  
-
   try {
-    // Update conversation to human mode
-
     const cookieStore = await cookies();
-      const userSession = cookieStore.get('user_session')?.value;
-      
-      if (!userSession) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
+    const userSession = cookieStore.get('user_session')?.value;
+    
+    if (!userSession) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-      const { conversationId } = await params;
-      const { agentId } = await req.json();
-
-      const { email, organization_id } = JSON.parse(userSession);
-
+    const { conversationId } = await params;
+    const { agentId } = await req.json();
+    const { email, organization_id } = JSON.parse(userSession);
 
     await db
       .update(conversation)
@@ -41,7 +30,6 @@ export async function POST(
       })
       .where(eq(conversation.id, conversationId));
 
-    // Log activity
     await db.insert(agentActivity).values({
       conversation_id: conversationId,
       agent_id: agentId || email,
@@ -62,23 +50,17 @@ export async function POST(
 // Release conversation back to bot
 export async function DELETE(
   req: Request,
-  { params }: { params: { conversationId: string } }
+  { params }: { params: Promise<{ conversationId: string }> }
 ) {
-   
-
   try {
-
     const cookieStore = await cookies();
-      const userSession = cookieStore.get('user_session')?.value;
-      
-      if (!userSession) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
+    const userSession = cookieStore.get('user_session')?.value;
+    
+    if (!userSession) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-      const { email } = JSON.parse(userSession);
-
-
-  
+    const { email } = JSON.parse(userSession);
     const { conversationId } = await params;
 
     // 1. Verify the conversation actually exists in the DB
@@ -92,8 +74,6 @@ export async function DELETE(
       console.error(`Attempted handoff for non-existent conversation: ${conversationId}`);
       return NextResponse.json({ error: "Conversation not found in database" }, { status: 404 });
     }
-
-
 
     await db
       .update(conversation)
@@ -124,19 +104,15 @@ export async function DELETE(
 // Get handoff status
 export async function GET(
   req: Request,
-  { params }: { params: { conversationId: string } }
+  { params }: { params: Promise<{ conversationId: string }> }
 ) {
-  
-
   try {
-
     const cookieStore = await cookies();
-      const userSession = cookieStore.get('user_session')?.value;
-      
-      if (!userSession) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-
+    const userSession = cookieStore.get('user_session')?.value;
+    
+    if (!userSession) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     const { conversationId } = await params;
 
