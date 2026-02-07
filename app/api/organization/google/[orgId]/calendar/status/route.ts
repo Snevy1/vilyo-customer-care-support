@@ -5,7 +5,7 @@ import { eq } from 'drizzle-orm';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { orgId: string } }
+  { params }: { params: Promise<{ orgId: string }> }
 ) {
   try {
     const { orgId } =  await params;

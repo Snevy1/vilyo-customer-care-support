@@ -20,7 +20,7 @@ async function getSubscriptionService(subscriptionId: string, productType: strin
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string } > }
 ) {
   try {
     const cookieStore = await cookies();
@@ -31,7 +31,8 @@ export async function GET(
     }
     
     const { organization_id } = JSON.parse(userSession);
-    const subscriptionId = await params.id;
+    const subscriptionData = await params;
+    const subscriptionId = subscriptionData.id;
     
     // Get query parameters
     const url = new URL(request.url);

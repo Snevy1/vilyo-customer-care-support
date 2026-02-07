@@ -10,7 +10,7 @@ import { cookies } from "next/headers";
 // Toggle bot globally for a tenant
 export async function PATCH(
   req: Request,
-  { params }: { params: { tenantId: string } }
+  { params }:  { params: Promise<{ tenantId: string }> }
 ) {
   
 
@@ -62,7 +62,7 @@ export async function PATCH(
 // Get current bot settings
 export async function GET(
   req: Request,
-  { params }: { params: { tenantId: string } }
+  { params }: { params: Promise<{ tenantId: string }>  }
 ) {
   
 
