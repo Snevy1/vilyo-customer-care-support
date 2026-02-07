@@ -6,13 +6,15 @@ import { eq, and, desc, asc } from 'drizzle-orm';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { planId: string } }
+  { params }: { params: Promise<{ planId: string }> }
 ) {
   try {
+
+    const planData = await params;
     const [plan] = await db
       .select()
       .from(whatsAppPlans)
-      .where(eq(whatsAppPlans.plan_id, params.planId))
+      .where(eq(whatsAppPlans.plan_id, planData.planId))
       .limit(1);
 
     if (!plan) {
