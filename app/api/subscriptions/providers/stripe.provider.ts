@@ -21,11 +21,11 @@ export class StripeProvider implements PaymentProvider {
       payment_settings: { save_default_payment_method: 'on_subscription' },
       expand: ['latest_invoice.payment_intent'],
     });
-    
+    const periodEnd = subscription.items?.data?.[0]?.current_period_end; // seems subscription.current_period_end is deprecated
     return {
       id: subscription.id,
       status: subscription.status,
-      currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+      currentPeriodEnd: new Date(periodEnd * 1000),
       customerId: subscription.customer as string,
       planId: subscription.items.data[0].price.id,
       provider: 'stripe',
@@ -44,11 +44,11 @@ export class StripeProvider implements PaymentProvider {
     if ('deleted' in subscription) {
     throw new Error('Subscription has been deleted.');
   }
-    
+    const periodEnd = subscription.items?.data?.[0]?.current_period_end; // seems subscription.current_period_end is deprecated
     return {
       id: subscription.id,
       status: subscription.status as any,
-      currentPeriodEnd: new Date((subscription.current_period_end ?? 0) * 1000),
+      currentPeriodEnd: new Date((periodEnd ?? 0) * 1000),
       customerId: subscription.customer as string,
       planId: subscription.items.data[0].price.id,
       provider: 'stripe',
