@@ -141,7 +141,7 @@ export async function GET(
 // PUT - Update subscription
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string } > }
 ) {
   try {
     const cookieStore = await cookies();
@@ -150,9 +150,10 @@ export async function PUT(
     if (!userSession) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const subscriptionData = await params;
     
     const { organization_id } = JSON.parse(userSession);
-    const subscriptionId = params.id;
+    const subscriptionId = subscriptionData.id;
     const body = await request.json();
     
     const { 
@@ -204,7 +205,7 @@ export async function PUT(
 // PATCH - Partial update (like pause/resume)
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string } > }
 ) {
   try {
     const cookieStore = await cookies();
@@ -215,7 +216,8 @@ export async function PATCH(
     }
     
     const { organization_id } = JSON.parse(userSession);
-    const subscriptionId = params.id;
+    const subscriptionData = await params;
+    const subscriptionId = subscriptionData.id;
     const body = await request.json();
     
     const { 
@@ -299,7 +301,7 @@ export async function PATCH(
 // DELETE - Cancel/delete subscription
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }>  }
 ) {
   try {
     const cookieStore = await cookies();
@@ -310,7 +312,8 @@ export async function DELETE(
     }
     
     const { organization_id } = JSON.parse(userSession);
-    const subscriptionId = params.id;
+    const subscriptionData = await params;
+    const subscriptionId = subscriptionData.id;
     
     // Get query params
     const url = new URL(request.url);
