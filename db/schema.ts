@@ -588,7 +588,6 @@ export const crmSubscription = pgTable("crmSubscription", {
 
 
 
-<<<<<<< HEAD
 // ---------------- ENUMS ----------------
 export const paymentProviderEnum = pgEnum("payment_provider", [
   "stripe",
@@ -688,7 +687,6 @@ export const paymentProcessor = pgTable(
     ),
   })
 );
-=======
 
 
 // Plans
@@ -804,4 +802,3 @@ export const webchatPlans = pgTable("webchat_plans", {
   };
 });
 
->>>>>>> 5abd6c7c24c911c1ee80aad16107d75b1258e56d

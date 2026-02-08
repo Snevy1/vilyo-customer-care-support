@@ -8,7 +8,9 @@ import {
   Users, Phone, FileText, BarChart, Bell,
   CreditCard, HelpCircle, Globe, Shield,
   Workflow, Database, Mail, Calendar,
-  PieChart, Target, Users2, Smartphone, ChevronLeft, X
+  PieChart, Target, Users2, Smartphone, ChevronLeft, X,
+  CalendarDays,
+  DollarSign
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -51,6 +53,7 @@ const PRODUCT_SECTIONS: ProductSection[] = [
       { label: "Chatbot AI", href: "/dashboard/chatbot", icon: Bot, product: 'webchat' },
       { label: "Widget Settings", href: "/dashboard/widget", icon: Globe, product: 'webchat' },
       { label: "Analytics", href: "/dashboard/analytics", icon: BarChart, product: 'webchat' },
+       { label: "Subscription", href: "/dashboard/finance/webchat", icon: DollarSign, product: 'webchat' },
       { label: "Automation", href: "/dashboard/automation", icon: Workflow, product: 'webchat' },
       { label: "Team", href: "/dashboard/team", icon: Users, product: 'webchat' },
     ]
@@ -81,6 +84,7 @@ const PRODUCT_SECTIONS: ProductSection[] = [
       { label: "Dashboard", href: "/dashboard/crm", icon: LayoutDashboard, product: 'crm' },  // We will create specific pages for these subitems later
       { label: "Contacts", href: "/dashboard/crm", icon: Contact, product: 'crm' },
       { label: "Leads", href: "/dashboard/crm", icon: Target, product: 'crm' },
+      { label: "Appointments", href: "/dashboard/appointments", icon: CalendarDays, product: 'crm' },
       { label: "Deals", href: "/dashboard/crm", icon: CreditCard, product: 'crm' },
       { label: "Activities", href: "/dashboard/crm", icon: Calendar, product: 'crm' },
       { label: "Email Campaigns", href: "/dashboard/crm", icon: Mail, product: 'crm' },

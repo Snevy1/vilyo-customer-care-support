@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     organizationId, 
     productType, 
     planTier, 
-    paymentProvider, // 'paystack', 'stripe', etc.
+    paymentProvider, // 'paystack', 'stripe', 'paypal' 'free' etc.
     customerId,
     tenantId,
     metadata

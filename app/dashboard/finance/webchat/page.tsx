@@ -43,7 +43,7 @@ export default function WebChatPlanSelection({
       setError(null);
       
       // Fetch webchat plans from API
-      const response = await fetch('/api/admin/subscriptions/plans/webchat?activeOnly=true', {
+      const response = await fetch('/api/admin/subscriptions/plans/webchatbot?activeOnly=true', {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -231,9 +231,8 @@ export default function WebChatPlanSelection({
 
     setLoading(true);
     setError(null);
-
-    try {
-      const response = await fetch('/api/webchat/subscribe', {
+     try {
+      const response = await fetch('/api/subscriptions/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -260,7 +259,7 @@ export default function WebChatPlanSelection({
         setError('WebChat setup successful! You can now configure your chat widget.');
         // Redirect to dashboard after delay
         setTimeout(() => {
-          router.push('/dashboard/webchat/setup');
+          router.push('/dashboard');
         }, 2000);
       }
     } catch (err) {
@@ -268,7 +267,7 @@ export default function WebChatPlanSelection({
       console.error("Plan selection error:", err);
     } finally {
       setLoading(false);
-    }
+    } 
   };
 
   const getSelectedPlanDetails = () => {
@@ -512,7 +511,7 @@ export default function WebChatPlanSelection({
           <div className="flex justify-between items-center border-t pt-8">
             <button
               onClick={onBack}
-              className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition disabled:opacity-50"
+              className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition disabled:opacity-50 cursor-pointer hover:text-zinc-600"
               disabled={loading}
             >
               Back
@@ -558,7 +557,7 @@ export default function WebChatPlanSelection({
                 <button
                   onClick={handleSubmit}
                   disabled={loading || !selectedPlan}
-                  className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white px-8 py-3 rounded-lg font-bold hover:from-blue-700 hover:to-indigo-800 transition disabled:bg-gray-400 disabled:cursor-not-allowed shadow-md"
+                  className="bg-linear-to-r from-blue-600 to-indigo-700 text-white px-8 py-3 rounded-lg font-bold hover:from-blue-700 hover:to-indigo-800 transition disabled:bg-gray-400 disabled:cursor-not-allowed shadow-md"
                 >
                   {loading ? (
                     <span className="flex items-center justify-center gap-2">
