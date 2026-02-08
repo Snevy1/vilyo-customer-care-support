@@ -1,5 +1,22 @@
-import { CancelSubscriptionParams, CreateSubscriptionParams, GetSubscriptionParams, PaymentProvider, Subscription } from "../interfaces/payment-provider.interface";
+import { CancelSubscriptionParams, CreateCustomerParams, CreateCustomerResponse, CreateSubscriptionParams, FinalizeSubscriptionParams, GetSubscriptionParams,  SetupPaymentMethodParams, SetupPaymentMethodResponse, Subscription } from "../interfaces/payment-provider.interface";
 
+
+ interface PaymentProvider {
+  readonly providerName: string;
+
+  // Customer management
+  createCustomer?(params: CreateCustomerParams): Promise<CreateCustomerResponse>;
+  getCustomer?(customerId: string): Promise<any>;
+  
+  
+  createSubscription(params: CreateSubscriptionParams): Promise<Subscription>;
+  cancelSubscription(params: CancelSubscriptionParams): Promise<void>;
+  getSubscription(params: GetSubscriptionParams): Promise<Subscription>;
+  
+  // NEW: Methods for setup flow
+  setupPaymentMethod?(params: SetupPaymentMethodParams): Promise<SetupPaymentMethodResponse>;
+  finalizeSubscription?(params: FinalizeSubscriptionParams): Promise<Subscription>;
+}
 
 export class PaystackProvider implements PaymentProvider {
   readonly providerName = 'paystack';
