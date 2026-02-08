@@ -55,6 +55,54 @@ interface SubscriptionStats {
   byProvider: Record<string, number>;
 }
 
+
+// Subscription Fetched data Type:
+
+
+interface SubscriptionResponse {
+  id: string;
+  subscriptionData?: string[] | Record<string, unknown>;
+  providerData: any | null;
+  organizationId?:string;
+  fetchedAt: string;
+  // Optional fields
+  tenantId?: string;
+  maxContacts?: number;
+  maxDeals?: number;
+}
+
+interface WebChatSubscriptionData {
+  organizationId: string;
+  productType: 'web_chat';
+  planTier: string;
+  status: string;
+  provider: string;
+  periodEnd: Date | string | null;
+}
+
+interface WhatsAppSubscriptionData {
+  organizationId: string;
+  tenantId: string;
+  productType: 'whatsapp';
+  planTier: string;
+  status: string;
+  provider: string;
+  periodEnd: Date | string | null;
+}
+
+interface CRMSubscriptionData {
+  organizationId: string;
+  productType: 'crm';
+  planTier: string;
+  status: string;
+  provider: string;
+  periodEnd: Date | string | null;
+  maxContacts: number;
+  maxDeals: number;
+}
+
+
+
 export class SubscriptionService {
   constructor(private paymentProvider: PaymentProvider) {}
   
@@ -200,6 +248,150 @@ export class SubscriptionService {
         };
     }
   }
+
+  // Get subscription by OrganizationId
+  async getSubscriptionByOrganizationId(
+  organizationId: string, 
+  productType: ProductType
+): Promise<SubscriptionResponse | null> {
+  try {
+    // Validate inputs
+    if (!organizationId || organizationId.trim() === '') {
+      throw new Error('Organization ID is required');
+    }
+
+    if (!productType || !['web_chat', 'whatsapp', 'crm'].includes(productType)) {
+      throw new Error('Invalid product type. Must be one of: web_chat, whatsapp, crm');
+    }
+
+    let subscriptionId: string | null = null;
+    let subscriptionData: Record<string, any> | null = null;
+    
+    switch(productType) {
+      case 'web_chat': {
+        const [org] = await db.select()
+          .from(organizations)
+          .where(eq(organizations.id, organizationId))
+          .limit(1);
+        
+        if (!org) {
+          console.warn(`Organization not found: ${organizationId}`);
+          return null;
+        }
+        
+        if (!org.web_chat_subscription_id) {
+          console.warn(`No web chat subscription found for organization: ${organizationId}`);
+          return null;
+        }
+        
+        subscriptionId = org.web_chat_subscription_id;
+        subscriptionData = {
+          organizationId: org.id,
+          productType: 'web_chat' as const,
+          planTier: org.web_chat_plan,
+          status: org.web_chat_status,
+          provider: org.web_chat_provider,
+          periodEnd: org.web_chat_period_end,
+        };
+        break;
+      }
+        
+      case 'whatsapp': {
+        const [whatsapp] = await db.select()
+          .from(whatsAppSubscription)
+          .where(eq(whatsAppSubscription.organization_id, organizationId))
+          .limit(1);
+        
+        if (!whatsapp) {
+          console.warn(`WhatsApp subscription not found for organization: ${organizationId}`);
+          return null;
+        }
+        
+        subscriptionId = whatsapp.subscription_id;
+        subscriptionData = {
+          organizationId: whatsapp.organization_id,
+          tenantId: whatsapp.tenant_id,
+          productType: 'whatsapp' as const,
+          planTier: whatsapp.plan_tier,
+          status: whatsapp.status,
+          provider: whatsapp.provider,
+          periodEnd: whatsapp.current_period_end,
+        };
+        break;
+      }
+        
+      case 'crm': {
+        const [crm] = await db.select()
+          .from(crmSubscription)
+          .where(eq(crmSubscription.organization_id, organizationId))
+          .limit(1);
+        
+        if (!crm) {
+          console.warn(`CRM subscription not found for organization: ${organizationId}`);
+          return null;
+        }
+        
+        subscriptionId = crm.subscription_id;
+        subscriptionData = {
+          organizationId: crm.organization_id,
+          productType: 'crm' as const,
+          planTier: crm.plan_tier,
+          status: crm.status,
+          provider: crm.provider,
+          periodEnd: crm.current_period_end,
+          maxContacts: crm.max_contacts,
+          maxDeals: crm.max_deals,
+        };
+        break;
+      }
+    }
+    
+    if (!subscriptionId || !subscriptionData) {
+      // This should not happen if all cases are handled properly
+      console.error('Unexpected state: subscriptionId or subscriptionData is null');
+      return null;
+    }
+    
+    // Fetch provider subscription data with timeout and error handling
+    const providerSub = await Promise.race([
+      this.paymentProvider.getSubscription({ subscriptionId }),
+      new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Payment provider timeout')), 10000)
+      )
+    ]).catch((error: Error) => {
+      console.error(`Failed to fetch subscription from payment provider: ${error.message}`, {
+        subscriptionId,
+        organizationId,
+        productType,
+      });
+      // Return null for provider data if fetch fails
+      return null;
+    });
+    
+    return {
+      id: subscriptionId,
+      ...subscriptionData,
+      providerData: providerSub,
+      // Add metadata
+      fetchedAt: new Date().toISOString(),
+    };
+    
+  } catch (error:any) {
+    // Log unexpected errors
+    console.error(`Error in getSubscriptionByOrganizationId: ${error.message}`, {
+      organizationId,
+      productType,
+      stack: error.stack,
+    });
+    
+    // Re-throw if it's a validation error, otherwise return null
+    if (error.message.includes('required') || error.message.includes('Invalid')) {
+      throw error; // Let the caller handle validation errors
+    }
+    
+    return null;
+  }
+}
   
   // Get all subscriptions for organization (with pagination)
   async getOrganizationSubscriptions(

@@ -6,11 +6,11 @@ import { eq } from 'drizzle-orm';
 // PATCH: Update Organization Timezone
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { orgId: string } }
+  { params }: { params: Promise<{ orgId: string }>  }
 ) {
   try {
     const { timezone } = await req.json();
-    const { orgId } = params;
+    const { orgId } = await params;
 
     await db.update(organizations)
       .set({ timezone, updated_at: new Date() })
@@ -25,10 +25,10 @@ export async function PATCH(
 // DELETE: Disconnect Google Calendar
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { orgId: string } }
+  { params }: { params: Promise<{ orgId: string }>  }
 ) {
   try {
-    const { orgId } = params;
+    const { orgId } = await params;
 
     // Remove the connection from the DB
     // Because of  'cascade' onDelete, this is safe.

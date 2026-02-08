@@ -6,7 +6,7 @@ import { cookies } from 'next/headers';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }>  }
 ) {
   try {
     const cookieStore = await cookies();
@@ -17,7 +17,8 @@ export async function POST(
     }
     
     const { organization_id, role } = JSON.parse(userSession);
-    const subscriptionId = params.id;
+    const subscriptionData = await params;
+    const subscriptionId = subscriptionData.id;
     
     // Get product type from query params
     const url = new URL(request.url);

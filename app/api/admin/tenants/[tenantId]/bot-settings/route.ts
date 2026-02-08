@@ -10,7 +10,7 @@ import { cookies } from "next/headers";
 // Toggle bot globally for a tenant
 export async function PATCH(
   req: Request,
-  { params }: { params: { tenantId: string } }
+  { params }:  { params: Promise<{ tenantId: string }> }
 ) {
   
 
@@ -26,7 +26,8 @@ export async function PATCH(
         
         
 
-  const { tenantId } = params;
+  const { tenantId } =  await params;
+
   const { bot_enabled } = await req.json();
 
   if (typeof bot_enabled !== 'boolean') {
@@ -61,7 +62,7 @@ export async function PATCH(
 // Get current bot settings
 export async function GET(
   req: Request,
-  { params }: { params: { tenantId: string } }
+  { params }: { params: Promise<{ tenantId: string }>  }
 ) {
   
 
@@ -76,7 +77,7 @@ export async function GET(
           return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const { tenantId } = params;
+        const { tenantId } = await params;
         
     const [tenant] = await db
       .select()

@@ -6,6 +6,7 @@ export interface Subscription {
   customerId: string;
   planId: string;
   provider: 'paystack' | 'stripe' | 'paypal';
+  current_period_end?: Date;
 }
 
 export interface CreateSubscriptionParams {

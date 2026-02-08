@@ -120,6 +120,69 @@
       "when": 1769891663540,
       "tag": "0016_sudden_aqueduct",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1770356398469,
+      "tag": "0017_rare_chimera",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1770356705805,
+      "tag": "0018_optimal_kylun",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1770357655976,
+      "tag": "0019_fantastic_longshot",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1770360513495,
+      "tag": "0020_cultured_celestials",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1770370075589,
+      "tag": "0021_burly_monster_badoon",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1770375084764,
+      "tag": "0022_wise_the_hand",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1770392228248,
+      "tag": "0023_swift_tana_nile",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1770464396895,
+      "tag": "0024_burly_groot",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1770474995874,
+      "tag": "0025_plain_ted_forrester",
+      "breakpoints": true
     }
   ]
 }

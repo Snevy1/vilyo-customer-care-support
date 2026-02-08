@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
 import { eq, and } from 'drizzle-orm';
 import { db } from '@/db/client';
-import { googleCalendarConnections } from '@/db/schema';
+import { googleCalendarConnections,organizations } from '@/db/schema';
 import { cookies } from 'next/headers';
 
 export async function GET(request: NextRequest) {
@@ -20,22 +20,25 @@ export async function GET(request: NextRequest) {
     const storedOrgId = cookieStore.get('google_auth_org')?.value;
 
     if (error || !code) {
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/settings?error=oauth_denied`);
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/settings/error?error=oauth_denied`);
     }
 
     // 2. Security Check: Verify state to prevent CSRF
     if (!storedState || state !== storedState || !storedOrgId) {
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/settings?error=invalid_state`);
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/settings/error?error=invalid_state`);
     }
 
     const oauth2Client = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID!,
+      process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
       process.env.GOOGLE_CLIENT_SECRET!,
-      `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/google/callback`
+      `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/google/callback`,
+      
     );
 
+    
     // 3. Exchange code for tokens
     const { tokens } = await oauth2Client.getToken(code);
+
     oauth2Client.setCredentials(tokens);
 
     const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
@@ -56,6 +59,17 @@ export async function GET(request: NextRequest) {
       updateData.refresh_token = tokens.refresh_token;
     }
 
+const orgExists = await db.query.organizations.findFirst({
+  where: eq(organizations.id, storedOrgId),
+});
+
+if (!orgExists) {
+  // If it doesn't exist, we can't link a calendar. 
+  // You might want to create the org here or redirect with an error.
+  console.error(`Organization ${storedOrgId} not found in database.`);
+  return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/settings?error=org_not_found`);
+}
+
     await db.insert(googleCalendarConnections)
       .values({
         organization_id: storedOrgId,
@@ -67,7 +81,7 @@ export async function GET(request: NextRequest) {
       });
 
     // 5. Cleanup: Remove the temporary auth cookies
-    const response = NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/settings?success=calendar_connected`);
+    const response = NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/settings/success?success=calendar_connected`);
     response.cookies.delete('google_auth_state');
     response.cookies.delete('google_auth_org');
 
@@ -78,3 +92,5 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/settings?error=oauth_failed`);
   }
 }
+
+

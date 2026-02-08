@@ -14,7 +14,6 @@ export async function GET(request: Request) {
         { status: 400 }
       );
     }
-
     const [tenant] = await db.select()
       .from(whatsAppTenant)
       .where(eq(whatsAppTenant.organization_id, organization_id))

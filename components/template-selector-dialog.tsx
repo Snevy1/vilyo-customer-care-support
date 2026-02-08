@@ -45,7 +45,7 @@ export function TemplateSelectorDialog({ open, onOpenChange, phoneNumber, onTemp
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/templates');
+      const response = await fetch('/api/whatsapp-api/templates');
       const data = await response.json();
 
       if (!response.ok) {
@@ -84,7 +84,7 @@ export function TemplateSelectorDialog({ open, onOpenChange, phoneNumber, onTemp
     setSending(template.id);
     setError(null);
     try {
-      const response = await fetch('/api/templates/send', {
+      const response = await fetch('/api/whatsapp-api/templates/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -139,7 +139,7 @@ export function TemplateSelectorDialog({ open, onOpenChange, phoneNumber, onTemp
   return (
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-125">
         <DialogHeader>
           <DialogTitle>Send template message</DialogTitle>
           <DialogDescription>
@@ -162,7 +162,7 @@ export function TemplateSelectorDialog({ open, onOpenChange, phoneNumber, onTemp
             No approved templates found
           </div>
         ) : (
-          <ScrollArea className="h-[400px] pr-4">
+          <ScrollArea className="h-100 pr-4">
             <div className="space-y-3">
               {templates.map((template) => (
                 <div

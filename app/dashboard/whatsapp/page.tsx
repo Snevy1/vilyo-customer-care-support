@@ -71,8 +71,6 @@ const WhatsAppPage = () => {
         setOrganizationName(organization.business_name || organization.name);
         setOrganizationData(organization);
        
-        
-        
         // Also fetch WhatsApp connection status
         const whatsappRes = await fetch(`/api/whatsapp/status?organization_id=${organization.id}`);
         if (whatsappRes.ok) {
@@ -143,7 +141,7 @@ setUserData({
   const handleOpenWhatsApp = () => {
     // When WhatsApp is connected, any member can open it
     if (whatsappConnected) {
-      window.open('https://web.whatsapp.com', '_blank');
+      window.open('http://localhost:3000/whatsappInbox', '_blank');
     }
   };
 
@@ -253,7 +251,7 @@ setUserData({
                 <div className="p-4 bg-amber-50 text-amber-800 rounded-lg border border-amber-200">
                   <p className="font-medium">Subscription Required</p>
                   <p className="text-sm">Please upgrade your plan to enable the WhatsApp channel.</p>
-                   <button className="text-sm underline mt-2 block font-bold" onClick={()=>setShowPlanSelection(true)}>
+                   <button className="text-sm underline mt-2 block font-bold cursor-pointer" onClick={()=>setShowPlanSelection(true)}>
                       Upgrade Now
                    </button>
                   

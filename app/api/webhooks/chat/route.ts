@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db/client";
-import { whatsAppTenant, messages as messagesTable, conversation, knowledge_source, supportTickets, appointments, organizations } from "@/db/schema";
-import { eq, inArray } from "drizzle-orm";
+import { whatsAppTenant, messages as messagesTable, conversation, knowledge_source, supportTickets, appointments, organizations, sections } from "@/db/schema";
+import { and, eq, inArray } from "drizzle-orm";
 import { whatsappClient } from "@/lib/whatsapp/whatsapp-client";
 import { generateText, tool, stepCountIs, ToolSet } from 'ai';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
@@ -23,17 +23,37 @@ const supabaseAdmin = createClient(
 );
 
 export async function POST(req: Request) {
-    const payload = await req.json();
-    
-    // Only process actual message events
-    if (payload.event !== 'whatsapp.message.created') {
-        return NextResponse.json({ received: true });
+
+    const text = await req.text();
+
+    if (!text) {
+        return NextResponse.json({ message: "Empty body received" }, { status: 200 });
+    }
+    let payload;
+    try {
+        payload = JSON.parse(text);
+    } catch (e) {
+        return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
     }
 
-    const { data,knowledge_source_ids } = payload;
-    const customerPhone = data.from;
-    const phoneNumberId = data.phoneNumberId;
-    const userMessage = data.content;
+    // Kapso sends the message details inside the 'message' and 'conversation' keys
+    const messageData = payload.message;
+    const conversationData = payload.conversation;
+
+    // Check if this is actually a message (to avoid errors on other hook types)
+    if (!messageData || !messageData.from) {
+        console.log("No message data found in payload");
+        return NextResponse.json({ received: true });
+    }
+    
+    
+
+    const customerPhone = messageData.from; // "254746358820"
+    const phoneNumberId = payload.phone_number_id; // "597907523413541"
+    const userMessage = messageData.text?.body || ""; // "Kuku"
+    const contactName = conversationData?.contact_name || "";
+
+    console.log(`Processing message from ${customerPhone} for tenant ${phoneNumberId}`);
 
     // 1. Identify Tenant
     const [tenant] = await db
@@ -49,6 +69,19 @@ export async function POST(req: Request) {
 
     const orgId = tenant.organization_id;
     const sessionId = customerPhone;
+
+    // 2. Fetch the "Active" Knowledge Section for this Organization
+// We look for sections owned by the user who owns this organization
+const [activeSection] = await db
+    .select()
+    .from(sections)
+    .where(and(
+        eq(sections.user_email, tenant.email), // Mapping back to the owner
+        eq(sections.status, 'active')         // Only use the active knowledge
+    ))
+    .limit(1);
+
+    const sourceIds = activeSection?.source_ids || [];
 
     // 2. Rate Limiting (30 messages per minute per user)
     if (!checkRateLimit(sessionId, 30, 60000)) {
@@ -76,6 +109,7 @@ export async function POST(req: Request) {
                 chatbot_id: tenant.id,
                 name: customerPhone,
                 organization_id: orgId,
+                contact_name: contactName,
                 visitor_ip: "WhatsApp User",
                 is_human_takeover: false, // Default to bot mode
             });
@@ -159,18 +193,14 @@ try {
     // 5. RAG Retrieval 
     let context = "";
 
-        if (knowledge_source_ids && knowledge_source_ids.length > 0) {
-            try {
-                const sources = await db
-                    .select({ content: knowledge_source.content })
-                    .from(knowledge_source)
-                    .where(inArray(knowledge_source.id, knowledge_source_ids));
-                
-                context = sources.map((s) => s.content).filter(Boolean).join("\n\n");
-            } catch (error) {
-                console.error("RAG Retrieval Error:", error);
-            }
-        }
+        if (sourceIds.length > 0) {
+    const sources = await db
+        .select({ content: knowledge_source.content })
+        .from(knowledge_source)
+        .where(inArray(knowledge_source.id, sourceIds));
+    
+    context = sources.map((s) => s.content).filter(Boolean).join("\n\n");
+}
 
     // 6. Token Management & Summarization
     const tokenCount = countConversationTokens(messages);
@@ -314,58 +344,76 @@ ${context}`;
             }),
             
             escalateIssue: tool({
-                description: 'Escalates a conversation to a human support agent.',
-                inputSchema: z.object({
-                    reason: z.string().describe('Why the issue was escalated'),
-                    user_message: z.string().describe("The user's last message"),
-                }),
-                execute: async ({ reason, user_message }) => {
-                    try {
-                        // Save ticket
-                        await db.insert(supportTickets).values({
-                            conversation_id: sessionId,
-                            organization_id: orgId,
-                            reason,
-                            last_message: user_message,
-                            status: 'open'
-                        });
+    description: 'Escalates a conversation to a human support agent.',
+    inputSchema: z.object({
+        reason: z.string().describe('Why the issue was escalated'),
+        user_message: z.string().describe("The user's last message"),
+    }),
+    execute: async ({ reason, user_message }) => {
+        try {
+            // Save ticket
+            await db.insert(supportTickets).values({
+                conversation_id: sessionId,
+                organization_id: orgId,
+                reason,
+                last_message: user_message,
+                status: 'open'
+            });
 
-                        //  AUTOMATICALLY ENABLE HUMAN TAKEOVER
-                        await db
-                            .update(conversation)
-                            .set({ is_human_takeover: true })
-                            .where(eq(conversation.id, sessionId));
+            // AUTOMATICALLY ENABLE HUMAN TAKEOVER
+            await db
+                .update(conversation)
+                .set({ is_human_takeover: true })
+                .where(eq(conversation.id, sessionId));
 
-                        // Send email notification
-                        try {
-                            const emailResult = await sendEmailNotification({
-                                email: tenant.email,
-                                reason,
-                                user_message,
-                                sessionId
-                            });
+            // Send email notification
+            try {
+                const emailResult = await sendEmailNotification({
+                    email: tenant.email,
+                    reason,
+                    user_message,
+                    sessionId
+                });
 
-                            if (emailResult.message === "error") {
-                                console.error("Email notification failed for escalation:", sessionId);
-                                // Continue - ticket was still created
-                            }
-                        } catch (emailError) {
-                            console.error("Email notification error:", emailError);
-                            // Continue - ticket was still created
-                        }
-
-                        return { success: true, message: "Ticket created and human takeover enabled" };
-                    } catch (error) {
-                        console.error("Escalation failed:", error);
-                        return {
-                            success: false,
-                            message: "I'm having trouble creating a support ticket right now, but I want to make sure you get help. Could you please email our support team directly? I apologize for the inconvenience!",
-                            error_type: "escalation_failure"
-                        };
-                    }
+                if (emailResult.message === "error") {
+                    console.error("Email notification failed for escalation:", sessionId);
+                    // Continue - ticket was still created
                 }
-            }),
+            } catch (emailError) {
+                console.error("Email notification error:", emailError);
+                // Continue - ticket was still created
+            }
 
+            
+            try {
+                await notifyOwner({
+                    orgId,
+                    type: 'ESCALATION',
+                    title: `Support Escalation: ${reason.substring(0, 50)}${reason.length > 50 ? '...' : ''}`,
+                    message: `A conversation has been escalated.\n\nReason: ${reason}\n\nUser's last message: ${user_message}`,
+                    data: {
+                        sessionId,
+                        conversation_id: sessionId,
+                        reason,
+                        user_message
+                    }
+                });
+            } catch (notifyError) {
+                console.error("Failed to notify owner via socket:", notifyError);
+                // Don't fail the escalation if notification fails
+            }
+
+            return { success: true, message: "Ticket created and human takeover enabled" };
+        } catch (error) {
+            console.error("Escalation failed:", error);
+            return {
+                success: false,
+                message: "I'm having trouble creating a support ticket right now, but I want to make sure you get help. Could you please email our support team directly? I apologize for the inconvenience!",
+                error_type: "escalation_failure"
+            };
+        }
+    }
+}),
               bookAppointment: tool({
               description: 'Books an appointment with the business',
               inputSchema: z.object({
