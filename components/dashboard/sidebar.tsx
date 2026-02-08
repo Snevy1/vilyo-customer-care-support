@@ -46,7 +46,7 @@ const PRODUCT_SECTIONS: ProductSection[] = [
     icon: MessageSquare,
     description: 'Website live chat',
     items: [
-      { label: "Dashboard", href: "/dashboard/webchat", icon: LayoutDashboard, product: 'webchat' },
+      { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, product: 'webchat' },
       { label: "Conversations", href: "/dashboard/conversations", icon: MessageSquare, product: 'webchat' },
       { label: "Knowledge Base", href: "/dashboard/knowledge", icon: BookOpen, product: 'webchat' },
       { label: "Chat Sections", href: "/dashboard/sections", icon: Layers, product: 'webchat' },
