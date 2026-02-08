@@ -82,7 +82,7 @@ export class StripeProvider implements PaymentProvider {
       expand: ['latest_invoice.payment_intent'],
     });
     
-    const periodEnd = subscription.current_period_end;
+    const periodEnd = subscription.items.data[0]?.current_period_end; // we will fix this later
     
     return {
       id: subscription.id,
@@ -105,7 +105,7 @@ export class StripeProvider implements PaymentProvider {
       expand: ['latest_invoice.payment_intent'],
     });
     
-    const periodEnd = subscription.current_period_end;
+    const periodEnd = subscription.items.data[0]?.current_period_end;
     
     return {
       id: subscription.id,
@@ -130,7 +130,7 @@ export class StripeProvider implements PaymentProvider {
       throw new Error('Subscription has been deleted.');
     }
     
-    const periodEnd = subscription.current_period_end;
+    const periodEnd = subscription.items.data[0]?.current_period_end;
     
     return {
       id: subscription.id,
