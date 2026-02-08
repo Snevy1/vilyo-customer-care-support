@@ -1,11 +1,11 @@
 // app/api/subscriptions/create/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { PaymentProviderFactory } from '../factories/payment-provider.factory'; 
-import { SubscriptionService } from '@/lib/subscriptions/services/subscription-service'; 
-import { getPlanId } from '@/lib/subscriptions/services/subscription-plans';
-import { cookies } from 'next/headers';
+//import { NextRequest, NextResponse } from 'next/server';
+//import { PaymentProviderFactory } from '../factories/payment-provider.factory'; 
+//import { SubscriptionService } from '@/lib/subscriptions/services/subscription-service'; 
+//import { getPlanId } from '@/lib/subscriptions/services/subscription-plans';
+//import { cookies } from 'next/headers';
 
-export async function POST(request: NextRequest) {
+/* export async function POST(request: NextRequest) {
 
     try {
 
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
   // 2. Create the right provider
   const paymentProviderInstance = PaymentProviderFactory.createProvider(
     paymentProvider,
-    { /* additional config */ }
+    
   );
   
   // 3. Create subscription service with that provider
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
         
     }
   
-}
+} */
 
 
 
