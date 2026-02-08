@@ -4,6 +4,7 @@ import  { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { MessageSquare, Users, Zap, Globe } from 'lucide-react';
 import { WebChatPlan, WebChatPlanSelectionProps } from '@/@types/types';
+import toast from 'react-hot-toast';
 
 
 
@@ -223,52 +224,71 @@ export default function WebChatPlanSelection({
     }
   ];
 
-  const handleSubmit = async () => {
-    if (!selectedPlan) {
-      setError('Please select a plan');
-      return;
-    }
+ const handleSubmit = async () => {
+  if (!selectedPlan) {
+    setError('Please select a plan');
+    return;
+  }
 
-    setLoading(true);
-    setError(null);
-     try {
-      const response = await fetch('/api/subscriptions/create', {
+  setLoading(true);
+  setError(null);
+
+  try {
+    const selectedPlanDetails = plans.find(p => p.id === selectedPlan);
+
+    // ============================================
+    // FREE PLAN: Activate immediately
+    // ============================================
+    if (selectedPlanDetails?.price === 0) {
+      const response = await fetch('/api/subscriptions/free/all', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ 
-          organization_id: organizationId,
-          organization_name: organizationName,
-          email: userEmail,
-          plan_id: selectedPlan
+        body: JSON.stringify({
+          planId: selectedPlan, // This is supposed to come from stripe/paypal 
+          organizationId,
+          productType: 'web_chat', // or 'whatsapp', 'crm'
+          planTier: selectedPlan, // 'free', 'starter', etc.
         }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error || 'Failed to subscribe to WebChat');
+        setError(data.error || 'Failed to activate free plan');
         return;
       }
 
-      if (data.url) {
-        // Redirect to payment page if needed
-        window.location.href = data.url;
-      } else if (data.success) {
-        // If free plan or immediate activation
-        setError('WebChat setup successful! You can now configure your chat widget.');
-        // Redirect to dashboard after delay
-        setTimeout(() => {
-          router.push('/dashboard');
-        }, 2000);
-      }
-    } catch (err) {
-      setError('Network error. Please try again.');
-      console.error("Plan selection error:", err);
-    } finally {
-      setLoading(false);
-    } 
-  };
+      toast.success('Free plan activated successfully!');
+      
+      // Redirect to dashboard
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 1500);
+      return;
+    }
+
+    // ============================================
+    // PAID PLAN: Redirect to checkout
+    // ============================================
+    // Store plan selection in session/localStorage for checkout page
+    sessionStorage.setItem('checkout_plan', JSON.stringify({
+      planId: selectedPlan,
+      productType: 'web_chat',
+      planTier: selectedPlan,
+      organizationId,
+    }));
+
+    // Redirect to checkout page
+    router.push(`/checkout?plan=${selectedPlan}`);
+
+  } catch (err) {
+    setError('Network error. Please try again.');
+    console.error("Plan selection error:", err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const getSelectedPlanDetails = () => {
     return plans.find(plan => plan.plan_id === selectedPlan);
@@ -555,21 +575,26 @@ export default function WebChatPlanSelection({
                 </div>
                 
                 <button
-                  onClick={handleSubmit}
-                  disabled={loading || !selectedPlan}
-                  className="bg-linear-to-r from-blue-600 to-indigo-700 text-white px-8 py-3 rounded-lg font-bold hover:from-blue-700 hover:to-indigo-800 transition disabled:bg-gray-400 disabled:cursor-not-allowed shadow-md"
-                >
-                  {loading ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      Processing...
-                    </span>
-                  ) : selectedPlanDetails?.price === 0 ? (
-                    'Activate Free Plan'
-                  ) : (
-                    'Continue to Payment'
-                  )}
-                </button>
+  onClick={handleSubmit}
+  disabled={loading || !selectedPlan}
+  className="bg-linear-to-r from-blue-600 to-indigo-700 text-white px-8 py-3 rounded-lg font-bold hover:from-blue-700 hover:to-indigo-800 transition disabled:bg-gray-400 disabled:cursor-not-allowed shadow-md"
+>
+  {loading ? (
+    <span className="flex items-center justify-center gap-2">
+      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+      {selectedPlanDetails?.price === 0 ? 'Activating...' : 'Processing...'}
+    </span>
+  ) : selectedPlanDetails?.price === 0 ? (
+    '✓ Activate Free Plan'
+  ) : (
+    <>
+      Continue to Payment
+      <svg className="ml-2 inline-block h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+      </svg>
+    </>
+  )}
+</button>
               </div>
               
               <p className="text-xs text-gray-500 mt-3">

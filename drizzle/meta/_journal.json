@@ -183,6 +183,13 @@
       "when": 1770474995874,
       "tag": "0025_plain_ted_forrester",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1770551037359,
+      "tag": "0026_overconfident_silver_sable",
+      "breakpoints": true
     }
   ]
 }

@@ -106,41 +106,39 @@ interface CRMSubscriptionData {
 export class SubscriptionService {
   constructor(private paymentProvider: PaymentProvider) {}
   
-  // ============ CREATE ============
-  async createSubscription(params: CreateSubscriptionParams) {
-    const { 
-      organizationId, 
-      productType, 
-      planTier, 
-      paymentProvider, 
-      planId, 
-      tenantId,
-      customerId,
-      metadata 
-    } = params;
-    
-    // 1. Create subscription in payment provider
-    const providerSub: ProviderSubscription = await this.paymentProvider.createSubscription({
-      customerId,
-      planId,
-      metadata: {
-        ...metadata,
-        organizationId,
-        productType,
-        planTier,
-      },
-    });
-    
-    // 2. Store in database
-    switch(productType) {
+  
+
+
+
+async saveSubscriptionToDb(params: {
+  organizationId: string;
+  productType: string;
+  planTier: string;
+  paymentProvider: string;
+  planId: string;
+  tenantId?: string;
+  providerSubscription: ProviderSubscription;
+}) {
+  const { 
+    organizationId, 
+    productType, 
+    planTier, 
+    paymentProvider, 
+    planId, 
+    tenantId,
+    providerSubscription
+  } = params;
+  
+
+  switch(productType) {
       case 'web_chat':
         return db.update(organizations)
           .set({
             web_chat_plan: planTier,
-            web_chat_subscription_id: providerSub.id,
+            web_chat_subscription_id:providerSubscription.id,
             web_chat_provider: paymentProvider,
             web_chat_status: 'active',
-            web_chat_period_end: providerSub.currentPeriodEnd,
+            web_chat_period_end: providerSubscription.currentPeriodEnd,
             web_chat_created_at: new Date(),
             web_chat_updated_at: new Date(),
           })
@@ -154,9 +152,9 @@ export class SubscriptionService {
           status: 'active',
           plan_tier: planTier,
           plan_id: planId,
-          subscription_id: providerSub.id,
+          subscription_id: providerSubscription.id,
           provider: paymentProvider,
-          current_period_end: providerSub.currentPeriodEnd,
+          current_period_end: providerSubscription.currentPeriodEnd,
           created_at: new Date(),
           updated_at: new Date(),
         }).returning();
@@ -168,17 +166,17 @@ export class SubscriptionService {
           status: 'active',
           plan_tier: planTier,
           plan_id: planId,
-          subscription_id: providerSub.id,
+          subscription_id: providerSubscription.id,
           provider: paymentProvider,
           max_contacts: crmPlan?.maxContacts || 0,
           max_deals: crmPlan?.maxDeals || 0,
           current_period_start: new Date(),
-          current_period_end: providerSub.currentPeriodEnd,
+          current_period_end: providerSubscription.currentPeriodEnd,
           created_at: new Date(),
           updated_at: new Date(),
         }).returning();
     }
-  }
+}
   
   // ============ READ ============
   

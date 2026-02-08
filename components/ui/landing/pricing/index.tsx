@@ -220,7 +220,7 @@ export default function Pricing() {
     if (!isAuthenticated) {
       // Store selections in localStorage and redirect to login
       localStorage.setItem('pricing_selections', JSON.stringify(selectedPlans));
-      router.push('/login?redirect=/checkout');
+      router.push('/api/auth?redirect=/checkout');
       return;
     }
     

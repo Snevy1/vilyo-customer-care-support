@@ -4,12 +4,10 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { loadStripe, Stripe } from '@stripe/stripe-js';
 import {
   Elements,
-  useStripe,
 } from '@stripe/react-stripe-js';
 import {
   PayPalScriptProvider,
-  PayPalButtons,
-  usePayPalScriptReducer,
+  
 } from '@paypal/react-paypal-js';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
@@ -491,7 +489,7 @@ export function SubscriptionCheckoutExample() {
               <ul className="mb-6 flex-1 space-y-2">
                 {plan.features.map((feature, index) => (
                   <li key={index} className="flex items-start text-sm">
-                    <CheckCircle className="mr-2 mt-0.5 h-4 w-4 flex-shrink-0 text-green-500" />
+                    <CheckCircle className="mr-2 mt-0.5 h-4 w-4 shrink-0 text-green-500" />
                     <span>{feature}</span>
                   </li>
                 ))}

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 
 interface WhatsAppPlan {
   id: string;
@@ -212,6 +213,74 @@ export default function WhatsAppPlanSelection({
           router.push('/dashboard');
         }, 2000);
       }
+    } catch (err) {
+      setError('Network error. Please try again.');
+      console.error("Plan selection error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+
+  const handleSubmitImproved = async () => {
+    if (!selectedPlan) {
+      setError('Please select a plan');
+      return;
+    }
+  
+    setLoading(true);
+    setError(null);
+  
+    try {
+      const selectedPlanDetails = plans.find(p => p.id === selectedPlan);
+  
+      // ============================================
+      // FREE PLAN: Activate immediately
+      // ============================================
+      if (selectedPlanDetails?.price === 0) {
+        const response = await fetch('/api/subscriptions/free/all', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            planId: selectedPlan, // This is supposed to come from stripe/paypal 
+            organizationId,
+            productType: 'web_chat', // or 'whatsapp', 'crm'
+            planTier: selectedPlan, // 'free', 'starter', etc.
+          }),
+        });
+  
+        const data = await response.json();
+  
+        if (!response.ok) {
+          setError(data.error || 'Failed to activate free plan');
+          return;
+        }
+  
+        toast.success('Free plan activated successfully!');
+        
+        // Redirect to dashboard
+        setTimeout(() => {
+          router.push('/dashboard');
+        }, 1500);
+        return;
+      }
+  
+      // ============================================
+      // PAID PLAN: Redirect to checkout
+      // ============================================
+      // Store plan selection in session/localStorage for checkout page
+      sessionStorage.setItem('checkout_plan', JSON.stringify({
+        planId: selectedPlan,
+        productType: 'web_chat',
+        planTier: selectedPlan,
+        organizationId,
+      }));
+  
+      // Redirect to checkout page
+      router.push(`/checkout?plan=${selectedPlan}`);
+  
     } catch (err) {
       setError('Network error. Please try again.');
       console.error("Plan selection error:", err);

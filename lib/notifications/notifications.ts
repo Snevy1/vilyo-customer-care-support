@@ -42,13 +42,29 @@ const config = {
   circuitBreakerResetMinutes: 60,
 };
 
-// Validate required config
+
+let configValidated = false;
+
+function validateConfig() {
+  if (configValidated) return;
+  
+  const required = ['redisUrl', 'webhookSecret', 'twilioSid', 'twilioToken', 'twilioNumber'];
+  const missing = required.filter(key => !config[key as keyof typeof config]);
+  
+  if (missing.length > 0) {
+    throw new Error(`Missing required config: ${missing.join(', ')}`);
+  }
+  
+  configValidated = true;
+}
+
+/* // Validate required config
 const required = ['redisUrl', 'webhookSecret', 'twilioSid', 'twilioToken', 'twilioNumber'];
 required.forEach(key => {
   if (!config[key as keyof typeof config]) {
     throw new Error(`Missing required config: ${key}`);
   }
-});
+}); */
 
 // =====================================================
 // REDIS & QUEUE
@@ -362,6 +378,7 @@ export async function notifyOwner(params: {
   message: string;
   data?: any;
 }) {
+  validateConfig();
   const { orgId, type, title, message, data } = params;
   if (!orgId) throw new Error('orgId is required');
 
@@ -460,6 +477,7 @@ export async function notifyOwner(params: {
 // UTILITIES & SHUTDOWN
 // =====================================================
 export async function testWebhook(orgId: string, webhookUrl: string) {
+  validateConfig();
   if (!validators.url(webhookUrl)) return { success: false, error: 'Invalid URL (SSRF or Protocol check failed)' };
   const prefs = await db.query.notificationSettings.findFirst({ where: eq(notificationSettings.organization_id, orgId) });
   const testPayload = formatters.webhookPayload({ type: 'APPOINTMENT_BOOKED', title: 'Test', message: 'Test Ping', orgId });

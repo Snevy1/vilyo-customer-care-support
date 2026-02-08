@@ -9,7 +9,7 @@ export function middleware(request: NextRequest) {
   // Protect WhatsApp inbox route
   if (request.nextUrl.pathname.startsWith('/whatsappInbox')) {
     if (!userSession) {
-      return NextResponse.redirect(new URL('/login', request.url));
+      return NextResponse.redirect(new URL('/api/auth', request.url));
     }
     
     // Optional: Add user info to headers for server components
@@ -25,7 +25,7 @@ export function middleware(request: NextRequest) {
         },
       });
     } catch (error) {
-      return NextResponse.redirect(new URL('/login', request.url));
+      return NextResponse.redirect(new URL('/api/auth', request.url));
     }
   }
   

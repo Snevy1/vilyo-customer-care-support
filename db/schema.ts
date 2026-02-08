@@ -39,6 +39,8 @@ export const organizations = pgTable("organizations", {
   web_chat_created_at:  timestamp("web_chat_created_at", { withTimezone: true }),
   web_chat_cancelled_at: timestamp("web_chat_cancelled_at", { withTimezone: true }),
   web_chat_updated_at:  timestamp("web_chat_updated_at", { withTimezone: true }),
+  stripe_customer_id: text('stripe_customer_id'), 
+  paypal_customer_id: text('paypal_customer_id'), // Optional because it is just orgId... :(
   owner_email: text("owner_email").notNull(),
   owner_phone: text('owner_phone'),
   created_at: timestamp("created_at", { withTimezone: true })
