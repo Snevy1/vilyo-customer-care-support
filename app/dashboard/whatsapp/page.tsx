@@ -141,7 +141,8 @@ setUserData({
   const handleOpenWhatsApp = () => {
     // When WhatsApp is connected, any member can open it
     if (whatsappConnected) {
-      window.open('http://localhost:3000/whatsappInbox', '_blank');
+      window.open('https://vilyo-customer-care-support.vercel.app/whatsappInbox', '_blank');
+      
     }
   };
 

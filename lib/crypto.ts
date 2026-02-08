@@ -1,7 +1,7 @@
 // lib/crypto.ts
 import crypto from 'crypto';
 
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
+const ENCRYPTION_KEY = process.env.CREDENTIALS_ENCRYPTION_KEY;
 const ALGORITHM = 'aes-256-gcm';
 
 function ensureEncryptionKey() {

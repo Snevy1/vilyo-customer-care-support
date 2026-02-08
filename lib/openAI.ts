@@ -24,7 +24,7 @@ export const openai = new OpenAI({
     fetch: customFetch,
     baseURL: "https://openrouter.ai/api/v1",
     defaultHeaders: {
-        "HTTP-Referer": process.env.YOUR_SITE_URL || "http://localhost:3000",
+        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
         "X-Title": process.env.YOUR_SITE_NAME || "My App",
     },
 });

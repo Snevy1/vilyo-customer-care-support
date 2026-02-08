@@ -7,7 +7,7 @@ const Page = () => {
   
   return (
     <div>
-        <Script src="http://localhost:3000/widget.js" data-id="ca939e72-f6e3-4962-9c48-51a067b735be" defer></Script>
+        <Script src="https://vilyo-customer-care-support.vercel.app/widget.js" data-id="ca939e72-f6e3-4962-9c48-51a067b735be" defer></Script>
     </div>
   )
 }
