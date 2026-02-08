@@ -117,4 +117,4 @@ export const StripeCheckoutForm: React.FC<StripeCheckoutFormProps> = ({
       </p>
     </div>
   );
-};
+}
