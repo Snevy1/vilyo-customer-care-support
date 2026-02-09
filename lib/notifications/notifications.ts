@@ -1,6 +1,7 @@
 // lib/notifications-enhanced.ts
 import { db } from "@/db/client";
-import { organizations, notificationSettings, webhookLogs, notificationLogs } from "@/db/schema";
+import { organizations, notificationSettings, webhookLogs, notificationLogs,notifications } from "@/db/schema";
+
 import { eq} from "drizzle-orm";
 import { sendEmailNotification } from "../email-notifications";
 import twilio from "twilio";
@@ -41,13 +42,29 @@ const config = {
   circuitBreakerResetMinutes: 60,
 };
 
-// Validate required config
+
+let configValidated = false;
+
+function validateConfig() {
+  if (configValidated) return;
+  
+  const required = ['redisUrl', 'webhookSecret', 'twilioSid', 'twilioToken', 'twilioNumber'];
+  const missing = required.filter(key => !config[key as keyof typeof config]);
+  
+  if (missing.length > 0) {
+    throw new Error(`Missing required config: ${missing.join(', ')}`);
+  }
+  
+  configValidated = true;
+}
+
+/* // Validate required config
 const required = ['redisUrl', 'webhookSecret', 'twilioSid', 'twilioToken', 'twilioNumber'];
 required.forEach(key => {
   if (!config[key as keyof typeof config]) {
     throw new Error(`Missing required config: ${key}`);
   }
-});
+}); */
 
 // =====================================================
 // REDIS & QUEUE
@@ -83,7 +100,7 @@ const PRIORITIES = {
 // =====================================================
 // TYPES
 // =====================================================
-type NotificationType = "APPOINTMENT_BOOKED" | "LEAD_GENERATED" | "PAYMENT_RECEIVED" | "CANCELLATION";
+type NotificationType = "APPOINTMENT_BOOKED" | "LEAD_GENERATED" | "PAYMENT_RECEIVED" | "CANCELLATION" | "ESCALATION";
 
 interface NotificationJobData {
   idempotencyKey: string;
@@ -361,6 +378,7 @@ export async function notifyOwner(params: {
   message: string;
   data?: any;
 }) {
+  validateConfig();
   const { orgId, type, title, message, data } = params;
   if (!orgId) throw new Error('orgId is required');
 
@@ -373,6 +391,42 @@ export async function notifyOwner(params: {
 
   const cleanTitle = formatters.sanitize(title, 200);
   const cleanMessage = formatters.sanitize(message, 1000);
+
+  // =====================================================
+  // 1. PERSISTENCE: Save to the Activity Feed (In-App)
+  // =====================================================
+
+  await db.insert(notifications).values({
+    organization_id: orgId,
+    type: type, // Matches  ActivityType 'HOT_LEAD', 'ESCALATION', etc.
+    title: cleanTitle,
+    description: cleanMessage,
+    is_read: false,
+  }).catch(e => console.error("Activity Feed Log Error:", e));
+
+
+
+  // =====================================================
+  // 2. REAL-TIME: Emit Socket Event
+  // =====================================================
+  try {
+    // This triggers the EscalationAlert.tsx on the frontend
+    await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/socket/emit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event: `org_${orgId}_escalation`,
+        payload: { 
+          sessionId: data?.sessionId || 'system', 
+          reason: cleanTitle, 
+          user_message: cleanMessage 
+        }
+      })
+    });
+  } catch (socketError) {
+    console.error('Socket notification failed:', socketError);
+  }
+
   const idempotencyBase = `${orgId}:${type}:${data?.id ?? Date.now()}`;
   const channels: string[] = [];
   const jobs: Promise<any>[] = [];
@@ -423,6 +477,7 @@ export async function notifyOwner(params: {
 // UTILITIES & SHUTDOWN
 // =====================================================
 export async function testWebhook(orgId: string, webhookUrl: string) {
+  validateConfig();
   if (!validators.url(webhookUrl)) return { success: false, error: 'Invalid URL (SSRF or Protocol check failed)' };
   const prefs = await db.query.notificationSettings.findFirst({ where: eq(notificationSettings.organization_id, orgId) });
   const testPayload = formatters.webhookPayload({ type: 'APPOINTMENT_BOOKED', title: 'Test', message: 'Test Ping', orgId });

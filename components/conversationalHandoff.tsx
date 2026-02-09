@@ -58,6 +58,7 @@ export function ConversationHandoffControl({
         onClick={toggleHandoff}
         disabled={isLoading}
         variant={isHumanTakeover ? 'outline' : 'default'}
+        className='text-zinc-800'
         size="sm"
       >
         {isLoading

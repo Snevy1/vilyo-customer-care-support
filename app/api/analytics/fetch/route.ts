@@ -1,4 +1,3 @@
-
 import { NextResponse } from "next/server";
 import { createClient } from '@supabase/supabase-js';
 import { db } from "@/db/client";
@@ -24,49 +23,54 @@ export async function GET() {
             
             const {  organization_id } = JSON.parse(userSession);
 
-        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+        // Use Date objects instead of ISO strings for Drizzle
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+        // For Supabase, convert to ISO string
+        const thirtyDaysAgoISO = thirtyDaysAgo.toISOString();
+        const sevenDaysAgoISO = sevenDaysAgo.toISOString();
 
         // Fetch leads data
         const { data: leads } = await supabaseAdmin
             .from('contacts')
             .select('lead_score, lead_quality, created_at')
             .eq('organization_id',  organization_id)
-            .gte('created_at', thirtyDaysAgo);
+            .gte('created_at', thirtyDaysAgoISO);
 
         // Fetch leads from last 7 days for comparison
         const { data: recentLeads } = await supabaseAdmin
             .from('contacts')
             .select('lead_score, lead_quality, created_at')
             .eq('organization_id',  organization_id)
-            .gte('created_at', sevenDaysAgo);
+            .gte('created_at', sevenDaysAgoISO);
 
 
-        // Fetch conversations
-const conversations = await db
-  .select({
-    id: conversation.id,
-    created_at: conversation.created_at,
-    chatbot_id: conversation.chatbot_id,
-  })
-  .from(conversation)
-  .where(
-    and(
-      eq(conversation.chatbot_id,  organization_id),
-      gte(conversation.created_at, thirtyDaysAgo)
-    )
-  );
+        // Fetch conversations - use Date object for Drizzle
+        const conversations = await db
+          .select({
+            id: conversation.id,
+            created_at: conversation.created_at,
+            chatbot_id: conversation.chatbot_id,
+          })
+          .from(conversation)
+          .where(
+            and(
+              eq(conversation.chatbot_id,  organization_id),
+              gte(conversation.created_at, thirtyDaysAgo)
+            )
+          );
 
-// Fetch messages
-const messagesData = await db
-  .select({
-    role: messages.role,
-    created_at: messages.created_at,
-    conversation_id: messages.conversation_id,
-  })
-  .from(messages)
-  .where(gte(messages.created_at, thirtyDaysAgo))
-  .orderBy(asc(messages.created_at));
+        // Fetch messages - use Date object for Drizzle
+        const messagesData = await db
+          .select({
+            role: messages.role,
+            created_at: messages.created_at,
+            conversation_id: messages.conversation_id,
+          })
+          .from(messages)
+          .where(gte(messages.created_at, thirtyDaysAgo))
+          .orderBy(asc(messages.created_at));
 
         
 

@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     organizationId, 
     productType, 
     planTier, 
-    paymentProvider, // 'paystack', 'stripe', etc.
+    paymentProvider, // 'paystack', 'stripe', 'paypal' 'free' etc.
     customerId,
     tenantId,
     metadata
@@ -40,9 +40,9 @@ export async function POST(request: NextRequest) {
   }
   
   // 2. Create the right provider
-  const paymentProviderInstance = PaymentProviderFactory.createProvider(
+  /* const paymentProviderInstance = PaymentProviderFactory.createProvider(
     paymentProvider,
-    { /* additional config */ }
+    
   );
   
   // 3. Create subscription service with that provider
@@ -59,8 +59,8 @@ export async function POST(request: NextRequest) {
     tenantId,
     metadata,
   });
-  
-  return NextResponse.json({ success: true, subscription });
+   */
+  return NextResponse.json({ success: true });
 
         
     } catch (error) {

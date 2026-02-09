@@ -20,6 +20,10 @@ export async function POST(req: Request) {
     plan_id = DEFAULT_SUBSCRIPTION.plan_id 
   } = await req.json();
 
+  console.log("Data values received", organization_id, 
+    organization_name, 
+    email, plan_id )
+
   try {
     if (!organization_id || !organization_name || !email) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });

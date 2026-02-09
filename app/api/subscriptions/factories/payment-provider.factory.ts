@@ -11,12 +11,12 @@ export class PaymentProviderFactory {
     config?: any
   ): PaymentProvider {
     switch(provider) {
-      case 'paystack':
+      /* case 'paystack':
         return new PaystackProvider({
           secretKey: process.env.PAYSTACK_SECRET_KEY!,
           ...config,
         });
-        
+         */
       case 'stripe':
         // Install: npm install stripe @types/stripe
         const Stripe = require('stripe');

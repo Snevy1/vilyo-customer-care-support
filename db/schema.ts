@@ -14,7 +14,10 @@ import { boolean, index, pgTable, text, timestamp,
         name: text("name"),
         email: text("email").notNull().unique(),
         image: text("image"),
-        created_at: text("created_at").default(sql`now()`),   
+        created_at: timestamp("created_at", { withTimezone: true })
+  .notNull()
+  .default(sql`now()`),
+
 }); 
 
 // organization
@@ -36,10 +39,16 @@ export const organizations = pgTable("organizations", {
   web_chat_created_at:  timestamp("web_chat_created_at", { withTimezone: true }),
   web_chat_cancelled_at: timestamp("web_chat_cancelled_at", { withTimezone: true }),
   web_chat_updated_at:  timestamp("web_chat_updated_at", { withTimezone: true }),
+  stripe_customer_id: text('stripe_customer_id'), 
+  paypal_customer_id: text('paypal_customer_id'), // Optional because it is just orgId... :(
   owner_email: text("owner_email").notNull(),
   owner_phone: text('owner_phone'),
-  created_at: timestamp("created_at").default(sql`now()`),
-  updated_at: timestamp("updated_at").default(sql`now()`),
+  created_at: timestamp("created_at", { withTimezone: true })
+  .notNull()
+  .default(sql`now()`),
+  updated_at: timestamp("updated_at", { withTimezone: true })
+  .notNull()
+  .default(sql`now()`),
 }, (table) => ({
   emailIdx: uniqueIndex("organizations_email_idx").on(table.email),
 }));
@@ -51,7 +60,11 @@ export const metadata = pgTable("metadata", {
         business_name: text("business_name").notNull(),
         website_url: text("website_url").notNull(),
         external_links: text("external_links"),
-        created_at: text("created_at").default(sql `now()`),
+        created_at: timestamp("created_at", { withTimezone: true })
+  .notNull()
+  .default(sql`now()`),
+  
+        
 })
 
 
@@ -67,7 +80,11 @@ export const knowledge_source = pgTable("knowledge_source", {
     content: text("content"),
     meta_data: text("meta_data"),
     last_updated: text("last_updated").default(sql `now()`),
-    created_at: text("created_at").default(sql `now()`),
+    
+    created_at: timestamp("created_at", { withTimezone: true })
+  .notNull()
+  .default(sql`now()`),
+  
 
 
 })
@@ -86,7 +103,10 @@ export const sections = pgTable("sections", {
     allowed_topics: text("allowed_topics"),
     blocked_topics: text("blocked_topics"),
     status: text("status").notNull().default("active"),
-    created_at: text("created_at").default(sql `now()`),
+       created_at: timestamp("created_at", { withTimezone: true })
+  .notNull()
+  .default(sql`now()`),
+ 
 
 });
 
@@ -107,7 +127,11 @@ export const chatBotMetadata = pgTable("chatBotMetadata", {
     web_settings: jsonb("web_settings"), // { theme: "...", position: "..." }
     bot_enabled: boolean('bot_enabled').default(true),
     
-    created_at: text("created_at").default(sql`now()`),
+    
+    created_at: timestamp("created_at", { withTimezone: true })
+  .notNull()
+  .default(sql`now()`),
+ 
 }, (table) => ({
     orgIdx: index("chatbot_org_idx").on(table.organization_id),
 }));
@@ -121,7 +145,10 @@ export const chatBotMetadata = pgTable("chatBotMetadata", {
     organization_id: text("organization_id").notNull(),
     role:text("role").notNull().default("member"),
     status: text("status").notNull().default("pending"),
-    created_at: text("created_at").default(sql`now()`)
+    created_at: timestamp("created_at", { withTimezone: true })
+  .notNull()
+  .default(sql`now()`),
+  
  });
 
 
@@ -136,6 +163,7 @@ export const conversation = pgTable("conversation", {
    
    // Universal fields
    name: text("name"),
+   contact_name: text("contact_name"),
    visitor_ip: text("visitor_ip"),
    user_email: text("user_email"),
    
@@ -236,7 +264,10 @@ export const messages = pgTable("messages", {
    name:text("name").notNull(),
    allowed_domains:text("allowed_domains").array(),
    status:text("status").notNull().default("active"),
-   created_at: text("created_at").default(sql`now()`),
+   created_at: timestamp("created_at", { withTimezone: true })
+  .notNull()
+  .default(sql`now()`),
+   
  });
 
  export const supportTickets = pgTable("supportTickets",{
@@ -287,7 +318,7 @@ export const whatsAppSubscription = pgTable("whatsAppSubscription", {
   organization_id: text("organization_id").notNull(),
   status: text("status").notNull(), // 'active', 'past_due', 'cancelled'
   plan_id: text("plan_id").notNull(), // Paystack plan_code for WhatsApp
-  subscription_id: text("plan_id"),
+  subscription_id: text("subscription_id"),
   plan_tier: text("plan_tier"), // standard, premium;
   provider: text("provider"), //'stripe', 'paystack'
   paystack_subscription_id: text("paystack_subscription_id"),
@@ -296,6 +327,7 @@ export const whatsAppSubscription = pgTable("whatsAppSubscription", {
   created_at: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
   updated_at: timestamp("updated_at", { withTimezone: true }).default(sql`now()`),
   cancelled_at: timestamp("cancelled_at", { withTimezone: true }).default(sql`now()`),
+
 },
 (table) => {
   return {
@@ -354,7 +386,10 @@ export const agentActivity = pgTable('agent_activity', {
   conversation_id: text('conversation_id').references(() => conversation.id),
   agent_id: text('agent_id').notNull(),
   action: text('action').notNull(), // 'takeover', 'release', 'message_sent'
-  created_at: timestamp('created_at').defaultNow().notNull(),
+  created_at: timestamp("created_at", { withTimezone: true })
+  .notNull()
+  .default(sql`now()`),
+  
 });
 
 
@@ -380,8 +415,9 @@ export const appointments = pgTable("appointments", {
   
   status: text("status").default("confirmed"), // confirmed | cancelled | completed
   reminder_sent: boolean("reminder_sent").default(false),
-  
-  created_at: timestamp("created_at").default(sql`now()`),
+  created_at: timestamp("created_at", { withTimezone: true })
+  .notNull()
+  .default(sql`now()`),
   notes: text("notes")
 }, (table) => ({
   orgIdx: index("appointments_org_idx").on(table.organization_id),
@@ -399,11 +435,16 @@ export const googleCalendarConnections = pgTable('google_calendar_connections', 
   access_token: text('access_token'),
   refresh_token: text('refresh_token'),
   expiry_date: bigint('expiry_date', { mode: 'number' }),
+  status: text('status').default('active').notNull(),
   scope: text('scope').notNull(),
   calendar_id: text('calendar_id').default('primary'),
   email: text('email'),
-  created_at: timestamp('created_at').defaultNow(),
-  updated_at: timestamp('updated_at').defaultNow(),
+  created_at: timestamp("created_at", { withTimezone: true })
+  .notNull()
+  .default(sql`now()`),
+  updated_at: timestamp("updated_at", { withTimezone: true })
+  .notNull()
+  .default(sql`now()`),
 });
 
 
@@ -425,8 +466,10 @@ export const webhookLogs = pgTable('webhook_logs', {
   response_time: integer('response_time'), // in milliseconds
   error_message: text('error_message'),
   payload: jsonb('payload'),
-  created_at: timestamp('created_at').defaultNow(),
-});
+  created_at: timestamp("created_at", { withTimezone: true })
+  .notNull()
+  .default(sql`now()`),
+  });
 
 // =====================================================
 // NOTIFICATION LOGS (For Auditing)
@@ -440,7 +483,9 @@ export const notificationLogs = pgTable('notification_logs', {
   title: text('title').notNull(),
   message: text('message').notNull(),
   channels: text('channels').array().notNull(), // Stores ['sms', 'email', etc]
-  created_at: timestamp('created_at').defaultNow(),
+  created_at: timestamp("created_at", { withTimezone: true })
+  .notNull()
+  .default(sql`now()`),
 });
 
 // =====================================================
@@ -471,8 +516,28 @@ export const notificationSettings = pgTable('notification_settings', {
   // Circuit Breaker Fields (Critical for the worker logic)
   webhook_failure_count: integer('webhook_failure_count').default(0).notNull(),
   webhook_retry_at: timestamp('webhook_retry_at'), // When the circuit breaker allows trying again
+
+  created_at: timestamp("created_at", { withTimezone: true })
+  .notNull()
+  .default(sql`now()`),
+  updated_at: timestamp("updated_at", { withTimezone: true })
+  .notNull()
+  .default(sql`now()`),
   
-  updated_at: timestamp('updated_at').defaultNow(),
+});
+
+// Customer Notifications
+
+
+// db/schema.ts
+export const notifications = pgTable("notifications", {
+  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+  organization_id: text("organization_id").notNull(),
+  type: text("type").notNull(), // 'HOT_LEAD', 'APPOINTMENT', 'ESCALATION'
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  is_read: boolean("is_read").default(false).notNull(),
+  created_at: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
 });
 
 
@@ -497,10 +562,18 @@ export const crmSubscription = pgTable("crmSubscription", {
   
   current_period_start: timestamp("current_period_start", { withTimezone: true }).notNull(),
   current_period_end: timestamp("current_period_end", { withTimezone: true }).notNull(),
+
+  created_at: timestamp("created_at", { withTimezone: true })
+  .notNull()
+  .default(sql`now()`),
+  updated_at: timestamp("updated_at", { withTimezone: true })
+  .notNull()
+  .default(sql`now()`),
   
-  created_at: timestamp("created_at").default(sql`now()`).notNull(),
-  updated_at: timestamp("updated_at").default(sql`now()`).notNull(),
-  cancelled_at: timestamp("cancelled_at"),
+  cancelled_at: timestamp("cancelled_at", { withTimezone: true })
+  .notNull()
+  .default(sql`now()`),
+    
 },
 (table) => {
   return {
@@ -616,3 +689,118 @@ export const paymentProcessor = pgTable(
     ),
   })
 );
+
+
+// Plans
+
+export const whatsAppPlans = pgTable("whatsapp_plans", {
+  id: text("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  
+  // Plan identifiers
+  plan_id: text("plan_id").unique().notNull(), // e.g., 'whatsapp_free_trial', 'whatsapp_basic'
+  external_plan_id: text("external_plan_id"), // For payment provider (Paystack plan_code, Stripe price_id)
+  
+  // Plan details
+  name: text("name").notNull(),
+  description: text("description"),
+  display_name: text("display_name"),
+  
+  // Pricing
+  price: integer("price").notNull().default(0), // Price in cents/pence
+  currency: text("currency").notNull().default('USD'),
+  billing_interval: text("billing_interval").notNull().default('month'), // 'day', 'week', 'month', 'year'
+  trial_period_days: integer("trial_period_days").default(0),
+  
+  // Features
+  features: jsonb("features").notNull().default([]), // Array of feature strings
+  limits: jsonb("limits").notNull().default({}), // e.g., { messages_per_month: 1000, whatsapp_numbers: 1 }
+  
+  // Metadata
+  is_active: boolean("is_active").notNull().default(true),
+  is_default: boolean("is_default").notNull().default(false),
+  sort_order: integer("sort_order").notNull().default(0),
+  
+  // Provider-specific
+  provider: text("provider").notNull().default('paystack'), // 'paystack', 'stripe', 'manual'
+  
+  // Timestamps
+  created_at: timestamp("created_at", { withTimezone: true })
+    .default(sql`now()`)
+    .notNull(),
+  updated_at: timestamp("updated_at", { withTimezone: true })
+    .default(sql`now()`)
+    .notNull(),
+  archived_at: timestamp("archived_at", { withTimezone: true }),
+}, (table) => {
+  return {
+    // Indexes for common queries
+    planIdIdx: index("whatsapp_plans_plan_id_idx").on(table.plan_id),
+    externalPlanIdIdx: index("whatsapp_plans_external_plan_id_idx").on(table.external_plan_id),
+    isActiveIdx: index("whatsapp_plans_is_active_idx").on(table.is_active),
+    providerIdx: index("whatsapp_plans_provider_idx").on(table.provider),
+    sortOrderIdx: index("whatsapp_plans_sort_order_idx").on(table.sort_order),
+  };
+});
+
+
+export const webchatPlans = pgTable("webchat_plans", {
+  id: text("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  
+  // Plan identifiers
+  plan_id: text("plan_id").unique().notNull(), // e.g., 'webchat_free', 'webchat_pro'
+  external_plan_id: text("external_plan_id"), // For payment provider
+  
+  // Plan details
+  name: text("name").notNull(),
+  description: text("description"),
+  display_name: text("display_name"),
+  
+  // Pricing
+  price: integer("price").notNull().default(0), // Price in cents/pence
+  currency: text("currency").notNull().default('USD'),
+  billing_interval: text("billing_interval").notNull().default('month'),
+  trial_period_days: integer("trial_period_days").default(0),
+  
+  // Features
+  features: jsonb("features").notNull().default([]),
+  limits: jsonb("limits").notNull().default({}),
+  
+  // Webchat-specific limits
+  max_chats_per_month: integer("max_chats_per_month"),
+  max_agents: integer("max_agents"),
+  ai_automation: boolean("ai_automation").default(false),
+  custom_branding: boolean("custom_branding").default(false),
+  custom_domains: integer("custom_domains").default(0),
+  integrations: jsonb("integrations").default([]), // ['slack', 'teams', 'zapier']
+  
+  // Metadata
+  is_active: boolean("is_active").notNull().default(true),
+  is_default: boolean("is_default").notNull().default(false),
+  sort_order: integer("sort_order").notNull().default(0),
+  
+  // Provider-specific
+  provider: text("provider").notNull().default('paystack'),
+  
+  // Timestamps
+  created_at: timestamp("created_at", { withTimezone: true })
+    .default(sql`now()`)
+    .notNull(),
+  updated_at: timestamp("updated_at", { withTimezone: true })
+    .default(sql`now()`)
+    .notNull(),
+  archived_at: timestamp("archived_at", { withTimezone: true }),
+}, (table) => {
+  return {
+    planIdIdx: index("webchat_plans_plan_id_idx").on(table.plan_id),
+    externalPlanIdIdx: index("webchat_plans_external_plan_id_idx").on(table.external_plan_id),
+    isActiveIdx: index("webchat_plans_is_active_idx").on(table.is_active),
+    providerIdx: index("webchat_plans_provider_idx").on(table.provider),
+    sortOrderIdx: index("webchat_plans_sort_order_idx").on(table.sort_order),
+    priceIdx: index("webchat_plans_price_idx").on(table.price),
+  };
+});
+

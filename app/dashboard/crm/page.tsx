@@ -165,6 +165,12 @@ if (matchingMember) {
     setError(null);
     
     try {
+      
+      localStorage.setItem('crm_context', JSON.stringify({
+        organizationId: organizationId,
+        userId: userData.userId
+    }));
+
       const response = await fetch('/api/crm/auth', {
         method: 'POST',
         headers: {

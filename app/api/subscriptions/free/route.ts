@@ -1,4 +1,6 @@
-// app/api/subscribe-free/route.ts
+
+
+// This route was used for testing crm free subscription, should be removed,
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 

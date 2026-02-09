@@ -96,7 +96,7 @@ export function InteractiveMessageDialog({
     setError(null);
 
     try {
-      const response = await fetch('/api/messages/interactive', {
+      const response = await fetch('/api/whatsapp-api/messages/interactive', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -132,7 +132,7 @@ export function InteractiveMessageDialog({
       onOpenChange(open);
       if (!open) handleReset();
     }}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-125">
         <DialogHeader>
           <DialogTitle>Send interactive message</DialogTitle>
           <DialogDescription>
@@ -169,7 +169,7 @@ export function InteractiveMessageDialog({
               value={body}
               onChange={(e) => setBody(e.target.value)}
               placeholder="Enter your message text"
-              className="bg-white border-[#d1d7db] focus-visible:ring-[#00a884] min-h-[100px]"
+              className="bg-white border-[#d1d7db] focus-visible:ring-[#00a884] min-h-25"
             />
           </div>
 
@@ -201,7 +201,7 @@ export function InteractiveMessageDialog({
                     className="bg-white border-[#d1d7db] focus-visible:ring-[#00a884]"
                     maxLength={20}
                   />
-                  <span className="text-xs text-[#667781] min-w-[3rem]">
+                  <span className="text-xs text-[#667781] min-w-12">
                     {button.title.length}/20
                   </span>
                   {buttons.length > 1 && (
