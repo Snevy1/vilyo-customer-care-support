@@ -97,6 +97,8 @@ export default function WhatsAppPlanSelection({
     }
   };
 
+  console.log("FetchedPlans", plans);
+
   // Static fallback plans in case API fails
   const getStaticPlans = (): WhatsAppPlan[] => [
     {
