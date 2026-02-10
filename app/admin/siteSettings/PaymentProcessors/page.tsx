@@ -58,7 +58,7 @@ export default function AdminUser() {
         apiKey: "pk_test_xxx",
         secretKey: "sk_test_xxx",
         authKey: "",
-        logoUrl: "https://example.com/stripe-logo.png",
+        logoUrl: "/stripe-logo.svg",
         isEnabled: true,
         priority: 0,
         is_top_priority: true,
@@ -69,7 +69,7 @@ export default function AdminUser() {
         apiKey: "xxx",
         secretKey: "xxx",
         authKey: "xxx",
-        logoUrl: "https://example.com/paypal-logo.png",
+        logoUrl: "/paypal-logo.svg",
         isEnabled: true,
         priority: 1,
         is_top_priority: false,
@@ -80,12 +80,12 @@ export default function AdminUser() {
         apiKey: "xxx",
         secretKey: "xxx",
         authKey: "xxx",
-        logoUrl: "https://example.com/mpesa-logo.png",
+        logoUrl: "/M-Pesa-logo.png",
         isEnabled: false,
         priority: 2,
         is_top_priority: false,
       },
-      {
+      /* {
         _id: "4",
         name: "Flutterwave",
         apiKey: "xxx",
@@ -95,7 +95,7 @@ export default function AdminUser() {
         isEnabled: true,
         priority: 3,
         is_top_priority: false,
-      },
+      }, */
     ];
 
     setSettings(
@@ -257,10 +257,10 @@ export default function AdminUser() {
 
                     {record.is_top_priority && (
                       <>
-                        <span className="hidden md:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 border border-purple-300">
+                        <span className="hidden md:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-400 border border-blue-300">
                           Top Priority
                         </span>
-                        <Crown className="text-purple-500 md:hidden h-5 w-5" />
+                        <Crown className="text-blue-500 md:hidden h-5 w-5" />
                       </>
                     )}
                   </div>

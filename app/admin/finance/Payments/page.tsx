@@ -234,7 +234,7 @@ export default function Payments() {
             
             <Button
               onClick={handleExport}
-              className="bg-[#3838F0] hover:bg-[#2a2ac7]"
+              className="bg-blue-400 hover:bg-blue-400"
             >
               <Download className="h-4 w-4 mr-2" />
               Export Data

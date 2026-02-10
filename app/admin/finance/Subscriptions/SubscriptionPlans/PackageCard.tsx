@@ -92,10 +92,10 @@ const PackageCard: React.FC<PackageCardProps> = ({ packageData }) => {
   return (
     <Card className="border-gray-300 shadow-md w-full max-w-112.5 mx-auto overflow-hidden">
       {/* Header */}
-      <CardHeader className="bg-[#000080] text-white p-6 space-y-2">
+      <CardHeader className="bg-blue-400 text-white p-6 space-y-2">
         <div className="flex items-center gap-2">
           <Package className="h-6 w-6" />
-          <div>
+          <div className="-mt-1">
             <h3 className="text-2xl font-bold">{packageData.name}</h3>
             {packageData.subtitle && (
               <p className="text-gray-200 text-sm">{packageData.subtitle}</p>
@@ -130,25 +130,25 @@ const PackageCard: React.FC<PackageCardProps> = ({ packageData }) => {
 
                   {/* Quantity Controls */}
                   <div className="col-span-3 flex justify-center">
-                    <div className="flex items-center border border-[#6666b3] rounded-md overflow-hidden">
+                    <div className="flex items-center border border-blue-400 rounded-md overflow-hidden">
                       <input
                         type="number"
                         value={item.qty || 1}
                         readOnly
                         className="w-10 text-center border-0 focus:outline-none bg-transparent text-sm"
                       />
-                      <div className="flex flex-col border-l border-[#6666b3]">
+                      <div className="flex flex-col border-l border-blue-400">
                         <button
                           type="button"
                           onClick={() => handleIncrease(name)}
-                          className="p-1 hover:bg-[#6666b3] hover:text-white transition-colors border-b border-[#6666b3]"
+                          className="p-1 hover:bg-blue-400 hover:text-white transition-colors border-b border-blue-400"
                         >
                           <Plus className="h-2 w-2" />
                         </button>
                         <button
                           type="button"
                           onClick={() => handleDecrease(name)}
-                          className="p-1 hover:bg-[#6666b3] hover:text-white transition-colors"
+                          className="p-1 hover:bg-blue-400 hover:text-white transition-colors"
                           disabled={(item.qty || 1) <= (item.minQty || 1)}
                         >
                           <Minus className="h-2 w-2" />
@@ -193,7 +193,7 @@ const PackageCard: React.FC<PackageCardProps> = ({ packageData }) => {
                 {benefits.map((benefit, index) => (
                   <div
                     key={index}
-                    className="bg-[#6666B3] text-white p-3 rounded-lg"
+                    className="bg-blue-400 text-white p-3 rounded-lg"
                   >
                     <p className="text-sm">{benefit}</p>
                   </div>
@@ -206,8 +206,8 @@ const PackageCard: React.FC<PackageCardProps> = ({ packageData }) => {
         {/* Price Display */}
         <div className="bg-[#F0F0FF] p-4 rounded-lg text-center">
           <div className="flex items-center justify-center gap-2">
-            <DollarSign className="h-5 w-5 text-[#000080]" />
-            <span className="text-xl font-bold text-[#000080]">
+            <DollarSign className="h-5 w-5 text-blue-400" />
+            <span className="text-xl font-bold text-blue-400">
               {packageData.basePriceMax === 0 ? (
                 "Free"
               ) : (
@@ -233,8 +233,8 @@ const PackageCard: React.FC<PackageCardProps> = ({ packageData }) => {
         {extras.length > 0 && (
           <div className="space-y-4 pt-6 border-t">
             <div className="flex items-center gap-2">
-              <CirclePlus className="h-5 w-5 text-[#6666B3]" />
-              <h3 className="font-semibold text-[#6666B3]">Extras</h3>
+              <CirclePlus className="h-5 w-5 text-blue-400" />
+              <h3 className="font-semibold text-blue-400">Extras</h3>
             </div>
 
             <div className="space-y-3">
@@ -255,25 +255,25 @@ const PackageCard: React.FC<PackageCardProps> = ({ packageData }) => {
 
                     {/* Quantity Controls */}
                     <div className="col-span-3 flex justify-center">
-                      <div className="flex items-center border border-[#6666b3] rounded-md overflow-hidden">
+                      <div className="flex items-center border border-blue-400 rounded-md overflow-hidden">
                         <input
                           type="number"
                           value={item.qty || 1}
                           readOnly
                           className="w-10 text-center border-0 focus:outline-none bg-transparent text-sm"
                         />
-                        <div className="flex flex-col border-l border-[#6666b3]">
+                        <div className="flex flex-col border-l border-blue-400">
                           <button
                             type="button"
                             onClick={() => handleIncrease(name)}
-                            className="p-1 hover:bg-[#6666b3] hover:text-white transition-colors border-b border-[#6666b3]"
+                            className="p-1 hover:bg-blue-400 hover:text-white transition-colors border-b border-blue-400"
                           >
                             <Plus className="h-2 w-2" />
                           </button>
                           <button
                             type="button"
                             onClick={() => handleDecrease(name)}
-                            className="p-1 hover:bg-[#6666b3] hover:text-white transition-colors"
+                            className="p-1 hover:bg-blue-400 hover:text-white transition-colors"
                             disabled={(item.qty || 1) <= (item.minQty || 1)}
                           >
                             <Minus className="h-2 w-2" />

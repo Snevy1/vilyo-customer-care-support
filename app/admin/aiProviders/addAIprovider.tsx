@@ -212,7 +212,7 @@ export default function AddAIProvider({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <button
-          className="mr-2 rounded-md bg-[#3838F0] text-white py-1 px-5 hover:bg-[#2a2ac7] transition-colors disabled:opacity-50"
+          className="mr-2 rounded-md bg-blue-400 text-white py-1 px-5 hover:bg-[#2a2ac7] transition-colors disabled:opacity-50"
           disabled={loading}
         >
           Add AI Providers
@@ -476,7 +476,7 @@ export default function AddAIProvider({
           ) : (
             <Button
               onClick={handleOk}
-              className="bg-[#3838F0] hover:bg-[#2a2ac7] text-white"
+              className="bg-blue-400 hover:bg-[#2a2ac7] text-white"
               disabled={loading}
             >
               {loading ? "Adding..." : "Add AI Provider"}

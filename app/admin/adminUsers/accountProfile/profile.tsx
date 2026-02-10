@@ -42,7 +42,7 @@ const [error,setIsError] = useState({message: ""}) // These are for testing, wil
     name:"nevily" ,
     email: "simiyunevily@gmail.com",
     messageNotificationInterval: 5,
-    profilePicture: {imageUrl: ""}
+    profilePicture: {imageUrl: "https://images.unsplash.com/photo-1714079761488-e0c9b9ac4138?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTJ8fGN1c3RvbWVyJTIwc3VwcG9ydHxlbnwwfHwwfHx8MA%3D%3D"}
   }
 
   // Initialize form values from user data
@@ -180,13 +180,13 @@ const [error,setIsError] = useState({message: ""}) // These are for testing, wil
   }
 
   // Error state
-  if (error) {
+  /* if (error) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="text-red-500">Error loading profile: {error.message}</div>
       </div>
     );
-  }
+  } */
 
   // No user state
   if (!user) {
@@ -219,7 +219,7 @@ const [error,setIsError] = useState({message: ""}) // These are for testing, wil
               ) : (
                 <FontAwesomeIcon
                   icon={faUser}
-                  className="text-[#000080] h-10 w-10 md:h-21.25 md:w-21.25"
+                  className="text-blue-400 h-10 w-10 md:h-21.25 md:w-21.25"
                 />
               )}
 
@@ -234,13 +234,14 @@ const [error,setIsError] = useState({message: ""}) // These are for testing, wil
               />
 
               {/* Edit icon overlay */}
-              <div className="absolute -bottom-1 -right-1 bg-white p-1 rounded-full cursor-pointer">
+              <div className="absolute -bottom-1 -right-1 bg-blue-500 p-1 rounded-full cursor-pointer">
                 {updateProfilePictureMutation.isPending ? (
                   <LoaderCircle className="w-5 h-5 text-secondaryBorder animate-spin" />
                 ) : (
                   <Edit3
                     onClick={handleIconClick}
-                    className="w-5 h-5 text-primaryLime hover:text-primaryLime/80 transition-colors"
+                    className=" text-primaryLime hover:text-primaryLime/80 transition-colors"
+                    size={30}
                   />
                 )}
               </div>
@@ -277,7 +278,7 @@ const [error,setIsError] = useState({message: ""}) // These are for testing, wil
                     }
                   }}
                   disabled={updateUserMutation.isPending}
-                  className="p-2 lg:ml-5 bg-[rgba(217,217,217,0.87)] font-medium text-black hover:bg-gray-300 transition-colors whitespace-nowrap disabled:opacity-50"
+                  className="p-2 lg:ml-5 bg-[rgba(217,217,217,0.87)] cursor-pointer font-medium text-black hover:bg-gray-300 transition-colors whitespace-nowrap disabled:opacity-50"
                 >
                   {updateUserMutation.isPending ? (
                     <LoaderCircle className="w-4 h-4 animate-spin inline mr-2" />
@@ -317,7 +318,7 @@ const [error,setIsError] = useState({message: ""}) // These are for testing, wil
                     <button
                       onClick={handleUpdatePassword}
                       disabled={updatePasswordMutation.isPending}
-                      className="p-2 bg-green-500 font-medium text-white hover:bg-green-600 transition-colors px-4 disabled:opacity-50"
+                      className="p-2 bg-blue-400 font-medium cursor-pointer text-white hover:bg-blue-200 transition-colors px-4 disabled:opacity-50"
                     >
                       {updatePasswordMutation.isPending ? (
                         <LoaderCircle className="w-4 h-4 animate-spin inline mr-2" />
@@ -332,7 +333,7 @@ const [error,setIsError] = useState({message: ""}) // These are for testing, wil
                         setConfirmNewPassword("");
                       }}
                       disabled={updatePasswordMutation.isPending}
-                      className="p-2 bg-gray-300 font-medium text-black hover:bg-gray-400 transition-colors px-4 disabled:opacity-50"
+                      className="p-2 bg-gray-300 font-medium cursor-pointer text-black hover:bg-gray-400 transition-colors px-4 disabled:opacity-50"
                     >
                       Cancel
                     </button>
@@ -370,7 +371,7 @@ const [error,setIsError] = useState({message: ""}) // These are for testing, wil
                   value={selectedValue}
                   onChange={handleIntervalChange}
                   disabled={updateNotificationIntervalMutation.isPending}
-                  className="border border-gray-300 p-2 rounded-md w-fit bg-white pr-8 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="border border-gray-300 p-2 rounded-md w-fit bg-blue-400 pr-8 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <option value="">
                     {`Current: ${

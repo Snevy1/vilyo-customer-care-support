@@ -238,7 +238,7 @@ function SettingsContent({
             </div>
             <Button 
               onClick={() => onNavigate('social')}
-              className="bg-[#3838F0] hover:bg-[#2a2ac7]"
+              className="bg-blue-400 hover:bg-blue-400"
             >
               <Edit className="h-4 w-4 mr-2" />
               Edit All Links

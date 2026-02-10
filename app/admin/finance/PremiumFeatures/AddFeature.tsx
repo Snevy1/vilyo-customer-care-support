@@ -188,7 +188,7 @@ const AddFeature = ({ data, refetch }: AddFeatureProps) => {
     <div>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          <button className="rounded-md px-6 py-2 text-white bg-[#3838F0] flex items-center hover:bg-[#2a2ac7] transition-colors">
+          <button className="rounded-md px-6 py-2 text-white bg-blue-400 flex items-center hover:bg-blue-200 transition-colors">
             {data ? "Edit" : "Add Feature"}
           </button>
         </DialogTrigger>

@@ -1,3 +1,6 @@
+"use client"
+
+
 import {
   ArrowUp,
   Info,
@@ -55,7 +58,7 @@ export default function Index() {
           >
             <Ticket className="mr-2" />
             <p className="text-lg font-medium text-[#838384]">
-              AI Generated Risks
+              Ai expenditure cost
             </p>
           </TabsTrigger>
 

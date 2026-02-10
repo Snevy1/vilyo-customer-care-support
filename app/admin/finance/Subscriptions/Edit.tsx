@@ -457,7 +457,7 @@ export default function EditPackage({ packageId, onUpdate }: EditPackageProps) {
     <>
       <Button
         onClick={handleOpen}
-        className="bg-[#3838F0] hover:bg-[#2a2ac7] text-white"
+        className="bg-blue-400 hover:bg-blue-400 text-white"
       >
         <Edit className="h-4 w-4 mr-2" />
         Edit Package

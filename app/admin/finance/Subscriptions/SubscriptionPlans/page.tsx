@@ -14,21 +14,26 @@ import { AlertCircle } from "lucide-react";
 import { PackageFeature } from "@/@types/types"; 
 
 // Static data for migration
+
+
 const staticSubscriptionPackages = [
+  // =============== WEBCHAT PLANS ===============
   {
-    _id: "free_plan_1",
-    name: "Free Plan",
-    subtitle: "Trial and upgrade",
+    _id: "webchat_free_1",
+    name: "Web Chat Free",
+    subtitle: "Basic chat for small websites",
     basePriceMin: 0,
     basePriceMax: 0,
-    minItems: 2,
+    minItems: 1,
     benefits: [
-      "Interact with our T&O standings such as vote risk up/down, like and comment.",
-      "Refer others to join and participate through our referral channel."
+      "Up to 100 chats per month",
+      "Basic chat widget customization",
+      "Email support with 48-hour response time",
+      "7-day chat history retention"
     ],
     features: [
       {
-        _id: { name: "AI Generated risk profile", price: 0, type: "item" },
+        _id: { name: "Basic Web Chat", price: 0, type: "item" },
         minQty: 1,
         maxQty: 1,
         customPrice: 0,
@@ -36,111 +41,213 @@ const staticSubscriptionPackages = [
         type: "item"
       },
       {
-        _id: { name: "Upload to T&O Standings", price: 0, type: "item" },
-        minQty: 1,
-        maxQty: 1,
-        customPrice: 0,
-        qty: 1,
-        type: "item"
-      }
-    ]
-  },
-  {
-    _id: "standard_package_1",
-    name: "Standard Package",
-    subtitle: "Built for the basic requirements",
-    basePriceMin: 64.5,
-    basePriceMax: 64.5,
-    minItems: 2,
-    benefits: [
-      "Interact with our T&O standings",
-      "Refer others to join and participate",
-      "Manage risks you have added"
-    ],
-    features: [
-      {
-        _id: { name: "AI Generated risk profile", price: 4, type: "item" },
-        minQty: 1,
-        maxQty: 10,
-        customPrice: 4,
-        qty: 1,
-        type: "item"
-      },
-      {
-        _id: { name: "Upload to T&O Standings", price: 4, type: "item" },
-        minQty: 1,
-        maxQty: 10,
-        customPrice: 4,
-        qty: 1,
-        type: "item"
-      }
-    ]
-  },
-  {
-    _id: "premium_package_1",
-    name: "Premium Package",
-    subtitle: "Manage and allow more options",
-    basePriceMin: 167,
-    basePriceMax: 167,
-    minItems: 2,
-    benefits: [
-      "Advanced analytics dashboard",
-      "Priority customer support",
-      "Custom API integration"
-    ],
-    features: [
-      {
-        _id: { name: "AI Generated risk profile", price: 50, type: "item" },
-        minQty: 1,
-        maxQty: 20,
-        customPrice: 50,
-        qty: 1,
-        type: "item"
-      },
-      {
-        _id: { name: "Advanced Upload Options", price: 50, type: "item" },
-        minQty: 1,
-        maxQty: 20,
-        customPrice: 50,
-        qty: 1,
-        type: "item"
-      }
-    ]
-  },
-  {
-    _id: "gold_package_1",
-    name: "Gold Package",
-    subtitle: "Comprehensive package",
-    basePriceMin: 203,
-    basePriceMax: 203,
-    minItems: 3,
-    benefits: [
-      "Exclusive access to premium analytics",
-      "Dedicated account manager",
-      "Advanced customization options"
-    ],
-    features: [
-      {
-        _id: { name: "AI Generated risk profile", price: 100, type: "item" },
-        minQty: 1,
-        maxQty: 30,
-        customPrice: 100,
-        qty: 1,
-        type: "item"
-      },
-      {
-        _id: { name: "Enterprise Upload Options", price: 100, type: "item" },
-        minQty: 1,
-        maxQty: 30,
-        customPrice: 100,
-        qty: 1,
-        type: "item"
-      },
-      {
-        _id: { name: "Premium Support", price: 200, type: "extra" },
+        _id: { name: "AI Chatbot Responses", price: 5, type: "extra" },
         minQty: 0,
         maxQty: 1,
-        customPrice: 200,
+        customPrice: 5,
+        qty: 0,
+        type: "extra"
+      }
+    ]
+  },
+  {
+    _id: "webchat_pro_1",
+    name: "Web Chat Pro",
+    subtitle: "Advanced chat for growing businesses",
+    basePriceMin: 79,
+    basePriceMax: 79,
+    minItems: 1,
+    benefits: [
+      "Up to 5,000 chats per month",
+      "Fully customizable chat widget",
+      "24/7 priority support",
+      "Unlimited chat history",
+      "Advanced AI automation features",
+      "Team collaboration tools"
+    ],
+    features: [
+      {
+        _id: { name: "Professional Web Chat", price: 79, type: "item" },
+        minQty: 1,
+        maxQty: 1,
+        customPrice: 79,
+        qty: 1,
+        type: "item"
+      },
+      {
+        _id: { name: "Advanced AI Automation", price: 20, type: "extra" },
+        minQty: 0,
+        maxQty: 1,
+        customPrice: 20,
+        qty: 0,
+        type: "extra"
+      },
+      {
+        _id: { name: "Additional Agent Seat", price: 15, type: "extra" },
+        minQty: 0,
+        maxQty: 9,
+        customPrice: 15,
+        qty: 0,
+        type: "extra"
+      }
+    ]
+  },
+
+  // =============== WHATSAPP PLANS ===============
+  {
+    _id: "whatsapp_free_1",
+    name: "WhatsApp Basic",
+    subtitle: "14-day trial with basic messaging",
+    basePriceMin: 0,
+    basePriceMax: 0,
+    minItems: 1,
+    benefits: [
+      "Up to 100 messages per month",
+      "Basic AI response automation",
+      "Single WhatsApp number integration",
+      "Email support during trial period"
+    ],
+    features: [
+      {
+        _id: { name: "WhatsApp Basic Messaging", price: 0, type: "item" },
+        minQty: 1,
+        maxQty: 1,
+        customPrice: 0,
+        qty: 1,
+        type: "item"
+      },
+      {
+        _id: { name: "AI Response Engine", price: 10, type: "extra" },
+        minQty: 0,
+        maxQty: 1,
+        customPrice: 10,
+        qty: 0,
+        type: "extra"
+      }
+    ]
+  },
+  {
+    _id: "whatsapp_pro_1",
+    name: "WhatsApp Pro",
+    subtitle: "Advanced WhatsApp automation",
+    basePriceMin: 99,
+    basePriceMax: 99,
+    minItems: 1,
+    benefits: [
+      "Up to 5,000 messages per month",
+      "Custom AI training for responses",
+      "Multiple WhatsApp numbers (up to 3)",
+      "24/7 priority support",
+      "Advanced analytics dashboard",
+      "Custom integration capabilities"
+    ],
+    features: [
+      {
+        _id: { name: "WhatsApp Pro Messaging", price: 99, type: "item" },
+        minQty: 1,
+        maxQty: 1,
+        customPrice: 99,
+        qty: 1,
+        type: "item"
+      },
+      {
+        _id: { name: "Custom AI Training", price: 50, type: "extra" },
+        minQty: 0,
+        maxQty: 1,
+        customPrice: 50,
+        qty: 0,
+        type: "extra"
+      },
+      {
+        _id: { name: "Additional WhatsApp Number", price: 30, type: "extra" },
+        minQty: 0,
+        maxQty: 2,
+        customPrice: 30,
+        qty: 0,
+        type: "extra"
+      }
+    ]
+  },
+
+  // =============== CRM PLANS ===============
+  {
+    _id: "crm_free_1",
+    name: "CRM Free",
+    subtitle: "Basic customer management",
+    basePriceMin: 0,
+    basePriceMax: 0,
+    minItems: 1,
+    benefits: [
+      "Manage up to 100 contacts",
+      "Basic contact information storage",
+      "Email integration for basic communication",
+      "Simple reporting and analytics"
+    ],
+    features: [
+      {
+        _id: { name: "Basic CRM", price: 0, type: "item" },
+        minQty: 1,
+        maxQty: 1,
+        customPrice: 0,
+        qty: 1,
+        type: "item"
+      },
+      {
+        _id: { name: "Email Campaigns", price: 5, type: "extra" },
+        minQty: 0,
+        maxQty: 1,
+        customPrice: 5,
+        qty: 0,
+        type: "extra"
+      }
+    ]
+  },
+  {
+    _id: "crm_pro_1",
+    name: "CRM Pro",
+    subtitle: "Advanced customer relationship management",
+    basePriceMin: 99,
+    basePriceMax: 99,
+    minItems: 1,
+    benefits: [
+      "Unlimited contact management",
+      "Advanced contact segmentation",
+      "Email and phone integration",
+      "Workflow automation tools",
+      "Advanced analytics and reporting",
+      "API access for custom integrations",
+      "Customizable sales pipelines"
+    ],
+    features: [
+      {
+        _id: { name: "Professional CRM", price: 99, type: "item" },
+        minQty: 1,
+        maxQty: 1,
+        customPrice: 99,
+        qty: 1,
+        type: "item"
+      },
+      {
+        _id: { name: "Workflow Automation", price: 30, type: "extra" },
+        minQty: 0,
+        maxQty: 1,
+        customPrice: 30,
+        qty: 0,
+        type: "extra"
+      },
+      {
+        _id: { name: "Advanced Analytics Dashboard", price: 25, type: "extra" },
+        minQty: 0,
+        maxQty: 1,
+        customPrice: 25,
+        qty: 0,
+        type: "extra"
+      },
+      {
+        _id: { name: "Additional Team Member", price: 20, type: "extra" },
+        minQty: 0,
+        maxQty: 9,
+        customPrice: 20,
         qty: 0,
         type: "extra"
       }
@@ -221,7 +328,7 @@ const SubscriptionPlan = () => {
           {subscriptionPackages?.map((pkg) => (
             <CarouselItem
               key={pkg._id}
-              className="min-w-62.5 sm:min-w-75 md:min-w-87.5 lg:min-w-100 basis-[90%] sm:basis-[70%] md:basis-[50%] lg:basis-[40%] xl:basis-[30%]"
+              className="min-w-62.5  sm:min-w-75 md:min-w-87.5 lg:min-w-100 basis-[90%] sm:basis-[70%] md:basis-[50%] lg:basis-[40%] xl:basis-[30%]"
             >
               <PackageCard
                 packageData={{
@@ -247,8 +354,8 @@ const SubscriptionPlan = () => {
             </CarouselItem>
           ))}
         </CarouselContent>
-        <CarouselPrevious className="absolute z-99 -left-5 sm:-left-2.5 top-1/3 transform translate-x-1/2 bg-[#000080] text-white h-10 w-10 rounded-full hover:bg-[#000060]" />
-        <CarouselNext className="absolute right-5 top-1/3 z-99 transform translate-x-1/2 bg-[#000080] text-white h-10 w-10 rounded-full hover:bg-[#000060]" />
+        <CarouselPrevious className="absolute z-99 -left-5 sm:-left-2.5 top-1/3 transform translate-x-1/2 bg-blue-400 text-white h-10 w-10 rounded-full hover:bg-blue-200" />
+        <CarouselNext className="absolute right-5 top-1/3 z-99 transform translate-x-1/2 bg-blue-400 text-white h-10 w-10 rounded-full hover:bg-blue-200" />
       </Carousel>
     </div>
   );

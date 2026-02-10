@@ -82,7 +82,7 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
+  --background: oklch(0.985 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);
@@ -130,3 +130,59 @@
   width: 100% !important;
   min-width: 0 !important;
 }
+
+
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Prevent horizontal scroll on mobile */
+@media (max-width: 768px) {
+  html, body {
+    overflow-x: hidden;
+  }
+}
+
+/* Smooth transitions */
+* {
+  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.3s ease;
+}
+
+/* Override background to be lighter */
+body {
+  background-color: #ffffff !important; /* Light blue-gray */
+}
+
+.dark body {
+  background-color: #1f2937 !important; /* Medium dark gray */
+}
+
+/* If you want the dashboard cards to also have lighter backgrounds */
+.bg-white {
+  background-color: #ffffff !important;
+}
+
+.dark .bg-white {
+  background-color: #374151 !important;
+}
+
+
+
+

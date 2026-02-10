@@ -199,7 +199,7 @@ export default function EditAIProvider({
       <Settings size={20} className="cursor-pointer" onClick={showModal} />
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto text-zinc-700">
           <DialogHeader>
             <DialogTitle>Edit AI Provider</DialogTitle>
           </DialogHeader>

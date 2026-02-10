@@ -73,7 +73,7 @@ const Page = () => {
         <div className="flex ml-auto">
           <Button
             onClick={() => setIsAddModalVisible(true)}
-            className="bg-[#3838F0] hover:bg-[#2a2ac7]"
+            className="bg-blue-400 hover:bg-blue-400"
           >
             Add Duration
           </Button>

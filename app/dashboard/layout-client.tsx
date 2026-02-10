@@ -43,7 +43,7 @@ export default function DashboardLayout({
                />
               
               <div className={`flex-1 flex flex-col relative min-h-screen transition-all duration-300 ${
-                isCollapsed ? 'md:ml-20' : 'md:ml-70'
+                isCollapsed ? 'md:ml-5' : 'md:ml-20'
               }`}>
                   <main className="flex-1">
                     {children}

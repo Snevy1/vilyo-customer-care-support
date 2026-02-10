@@ -1,3 +1,6 @@
+"use client"
+
+
 import CustomSearch from "@/components/shared/ReuseAble/input";
 import { AlertTriangle } from "lucide-react";
 import { PoundSterling } from "lucide-react";
@@ -39,7 +42,7 @@ const staticAIProviders: AIModel[] = [
     pros: ["Fast response", "Accurate", "Multi-language support"],
     cons: ["Costly for high usage"],
     isActive: true,
-    logoUrl: "/images/openai-logo.png",
+    logoUrl: "/openAI-logo.svg",
   },
   {
     _id: "2",
@@ -50,7 +53,7 @@ const staticAIProviders: AIModel[] = [
     pros: ["Long context", "Helpful", "Safety focused"],
     cons: ["Slower response time"],
     isActive: true,
-    logoUrl: "/images/claude-logo.png",
+    logoUrl: "/Claude-logo.svg",
   },
   {
     _id: "3",
@@ -61,7 +64,7 @@ const staticAIProviders: AIModel[] = [
     pros: ["Free tier", "Google integration", "Good for research"],
     cons: ["Limited capabilities"],
     isActive: true,
-    logoUrl: "/images/gemini-logo.png",
+    logoUrl: "/gemini-logo.svg",
   },
 ];
 
@@ -425,26 +428,26 @@ export default function AIProvidersIndex() {
                   </TableCell>
                 </TableRow>
               ) : filterData.length === 0 ? (
-                <TableRow>
+                <TableRow >
                   <TableCell colSpan={4} className="text-center py-8 text-gray-500">
                     No AI providers found
                   </TableCell>
                 </TableRow>
               ) : (
                 filterData.map((record) => (
-                  <TableRow key={record._id}>
+                  <TableRow key={record._id} className="text-zinc-700">
                     <TableCell>
                       <div className="flex items-center md:w-full w-32">
                         {record.logoUrl ? (
                           <img
                             src={record.logoUrl}
                             alt={record.name}
-                            className="w-6 h-6 mr-2 rounded-full object-cover"
+                            className="w-6 h-6 mr-2 rounded-full object-cover "
                           />
                         ) : (
-                          <div className="w-6 h-6 mr-2 bg-gray-300 rounded-full" />
+                          <div className="w-6 h-6 mr-2  bg-gray-300 rounded-full" />
                         )}
-                        <p className="mr-4 font-semibold">{record.name}</p>
+                        <p className="mr-4 font-semibold text-gray-700">{record.name}</p>
                         <EditAIProvider
                           id={record._id}
                           provider={record}

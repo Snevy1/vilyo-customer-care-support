@@ -224,12 +224,12 @@ export default function ViewEdit({ data }: ViewEditProps) {
   ];
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={setOpen} >
       <DialogTrigger asChild>
         <span className="cursor-pointer hover:underline">Edit Processor</span>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-137.5 max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-137.5 max-h-[90vh] overflow-y-auto text-zinc-700">
         <DialogHeader>
           <DialogTitle>Edit Payment Processor</DialogTitle>
           <DialogDescription>

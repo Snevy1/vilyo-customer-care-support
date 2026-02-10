@@ -1,6 +1,6 @@
 import { X, Plus, Minus } from "lucide-react";
 import { useEffect, useState } from "react";
-import "./css.css";
+import "../../globals.css"
 
 // shadcn/ui imports
 import { Button } from "@/components/ui/button";
@@ -279,7 +279,7 @@ export default function AddNew() {
     <div>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          <button className="rounded-md px-6 py-2 text-white bg-[#3838F0] flex items-center hover:bg-[#2a2ac7] transition-colors">
+          <button className="rounded-md px-6 py-2 text-white bg-blue-400 flex items-center hover:bg-blue-200 transition-colors">
             Create New Package
           </button>
         </DialogTrigger>
@@ -291,7 +291,7 @@ export default function AddNew() {
 
           <div className="bg-white w-full pb-5">
             {/* Header Section with Blue Background */}
-            <div className="w-full bg-[#000080] text-white rounded-lg p-4 mb-5 space-y-4">
+            <div className="w-full bg-blue-400 text-white rounded-lg p-4 mb-5 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="packageTitle" className="text-white">
@@ -410,7 +410,7 @@ export default function AddNew() {
                     />
 
                     <div className="w-[52%] flex gap-1 items-center justify-between">
-                      <div className="w-full rounded-lg bg-[#6666b3]">
+                      <div className="w-full rounded-lg bg-blue-400">
                         <Select
                           value={item._id}
                           onValueChange={(selectedId:any) => {
@@ -451,7 +451,7 @@ export default function AddNew() {
                             });
                           }}
                         >
-                          <SelectTrigger className="bg-[#6666b3] text-white border-none">
+                          <SelectTrigger className="bg-blue-400 text-white border-none">
                             <SelectValue placeholder="Select premium feature" />
                           </SelectTrigger>
                           <SelectContent>
@@ -466,7 +466,7 @@ export default function AddNew() {
                     </div>
 
                     {/* Min Qty */}
-                    <div className="border border-[#6666b3] rounded-lg flex w-[25%]">
+                    <div className="border border-blue-400 rounded-lg flex w-[25%]">
                       <input
                         type="number"
                         className="h-full outline-none text-black bg-transparent w-[50%] text-center"
@@ -501,7 +501,7 @@ export default function AddNew() {
                         }}
                       />
 
-                      <div className="bg-[#6666b3] h-full w-[50%] flex flex-col justify-between py-1 gap-3 text-[20px] rounded-r-lg">
+                      <div className="bg-blue-400 h-full w-[50%] flex flex-col justify-between py-1 gap-3 text-[20px] rounded-r-lg">
                         <button>
                           <Plus
                             className="cursor-pointer text-[#06DC1B]"
@@ -518,7 +518,7 @@ export default function AddNew() {
                     </div>
 
                     {/* Max Qty */}
-                    <div className="border border-[#6666b3] rounded-lg flex w-[25%]">
+                    <div className="border border-blue-400 rounded-lg flex w-[25%]">
                       <input
                         type="number"
                         className="h-full outline-none text-black bg-transparent w-[50%] text-center"
@@ -543,7 +543,7 @@ export default function AddNew() {
                           });
                         }}
                       />
-                      <div className="bg-[#6666b3] h-full w-[50%] flex flex-col justify-between py-1 gap-3 text-[20px] rounded-r-lg">
+                      <div className="bg-blue-400 h-full w-[50%] flex flex-col justify-between py-1 gap-3 text-[20px] rounded-r-lg">
                         <Plus
                           className="cursor-pointer text-[#06DC1B]"
                           size={20}
@@ -569,14 +569,14 @@ export default function AddNew() {
                       }}
                       type="number"
                       placeholder="Price"
-                      className="px-3 text-white bg-[#6666B3] flex justify-center items-center w-[12%] rounded-lg"
+                      className="px-3 text-white bg-blue-400 flex justify-center items-center w-[12%] rounded-lg"
                     />
                   </div>
                 ))}
 
                 <button
                   onClick={() => handleAddItem("item")}
-                  className="flex items-center text-[#6969F4] hover:bg-indigo-50 rounded-lg py-2"
+                  className="flex items-center text-blue-400 hover:bg-indigo-50 rounded-lg py-2"
                 >
                   <Plus className="mr-2" size={20} /> Add Item
                 </button>
@@ -585,7 +585,7 @@ export default function AddNew() {
 
             {/* Minimum Items */}
             <div className="ml-2 mt-4">
-              <div className="border border-grey bg-[#6666b3] text-white rounded-md flex items-center py-1 px-5 w-fit">
+              <div className="border border-grey bg-blue-400 text-white rounded-md flex items-center py-1 px-5 w-fit">
                 <p className="mr-2">Minimum Items</p>
                 <Separator orientation="vertical" className="mx-2 bg-white h-6" />
                 <select
@@ -627,13 +627,13 @@ export default function AddNew() {
                         );
                       }}
                       placeholder="Write here"
-                      className="p-2 w-full bg-[#6666B3] text-white rounded-md focus:outline-none"
+                      className="p-2 w-full bg-blue-400 text-white rounded-md focus:outline-none"
                     />
                   </div>
                 ))}
                 <button
                   onClick={handleAddBenefit}
-                  className="flex items-center text-[#6969F4] hover:bg-indigo-50 rounded-lg py-2"
+                  className="flex items-center text-blue-400 hover:bg-indigo-50 rounded-lg py-2"
                 >
                   <Plus className="mr-2" size={20} /> Add Benefit
                 </button>
@@ -644,7 +644,7 @@ export default function AddNew() {
             <div className="my-5 px-3 flex flex-col gap-2">
               <label className="text-lg">Price</label>
               <div className="bg-[#F0F0FF] rounded-lg p-2 h-12 w-full flex items-center justify-center text-center text-2xl focus:outline-none">
-                <p className="text-center text-lg font-bold tracking-wide text-[#000080]">
+                <p className="text-center text-lg font-bold tracking-wide text-blue-400">
                   {basePriceMin} - {basePriceMax}
                 </p>
               </div>
@@ -653,7 +653,7 @@ export default function AddNew() {
             {/* Extras Section */}
             <div className="my-5 px-3">
               <div className="flex justify-between items-center bg-[#F0F0FF] p-3 rounded-lg">
-                <h3 className="font-normal text-[#000080]">Extras</h3>
+                <h3 className="font-normal text-blue-400">Extras</h3>
                 {extras.length ? (
                   extras.length
                 ) : (
@@ -700,7 +700,7 @@ export default function AddNew() {
                       />
 
                       <div className="w-[52%] flex gap-1 items-center justify-between">
-                        <div className="w-full rounded-lg bg-[#6666b3]">
+                        <div className="w-full rounded-lg bg-blue-400">
                           <Select
                             value={item._id}
                             onValueChange={(selectedId:any) => {
@@ -741,7 +741,7 @@ export default function AddNew() {
                               });
                             }}
                           >
-                            <SelectTrigger className="bg-[#6666b3] text-white border-none">
+                            <SelectTrigger className="bg-blue-400 text-white border-none">
                               <SelectValue placeholder="Select premium feature" />
                             </SelectTrigger>
                             <SelectContent>
@@ -756,7 +756,7 @@ export default function AddNew() {
                       </div>
 
                       {/* Min Qty for Extras */}
-                      <div className="border border-[#6666b3] rounded-lg flex w-[25%]">
+                      <div className="border border-blue-400 rounded-lg flex w-[25%]">
                         <input
                           type="number"
                           className="h-full outline-none text-black bg-transparent w-[50%] text-center"
@@ -781,7 +781,7 @@ export default function AddNew() {
                             });
                           }}
                         />
-                        <div className="bg-[#6666b3] h-full w-[50%] flex flex-col justify-between py-1 gap-3 text-[20px] rounded-r-lg">
+                        <div className="bg-blue-400 h-full w-[50%] flex flex-col justify-between py-1 gap-3 text-[20px] rounded-r-lg">
                           <button>
                             <Plus
                               className="cursor-pointer text-[#06DC1B]"
@@ -798,7 +798,7 @@ export default function AddNew() {
                       </div>
 
                       {/* Max Qty for Extras */}
-                      <div className="border border-[#6666b3] rounded-lg flex w-[25%]">
+                      <div className="border border-blue-400 rounded-lg flex w-[25%]">
                         <input
                           type="number"
                           className="h-full outline-none text-black bg-transparent w-[50%] text-center"
@@ -823,7 +823,7 @@ export default function AddNew() {
                             });
                           }}
                         />
-                        <div className="bg-[#6666b3] h-full w-[50%] flex flex-col justify-between py-1 gap-3 text-[20px] rounded-r-lg">
+                        <div className="bg-blue-400 h-full w-[50%] flex flex-col justify-between py-1 gap-3 text-[20px] rounded-r-lg">
                           <Plus
                             className="cursor-pointer text-[#06DC1B]"
                             size={20}
@@ -848,14 +848,14 @@ export default function AddNew() {
                           );
                         }}
                         type="number"
-                        className="px-3 text-white bg-[#6666B3] flex justify-center items-center w-[12%] rounded-lg"
+                        className="px-3 text-white bg-blue-400 flex justify-center items-center w-[12%] rounded-lg"
                       />
                     </div>
                   ))}
 
                 <button
                   onClick={() => handleAddItem("extra")}
-                  className="flex items-center text-[#6969F4] hover:bg-indigo-50 rounded-lg py-2"
+                  className="flex items-center text-blue-400 hover:bg-indigo-50 rounded-lg py-2"
                 >
                   <Plus className="mr-2" size={20} /> Add Extra
                 </button>
@@ -875,7 +875,7 @@ export default function AddNew() {
               <Button
                 onClick={handleCreatePackage}
                 disabled={isLoading}
-                className="bg-[#3838F0] hover:bg-[#2a2ac7] text-white"
+                className="bg-blue-400 hover:bg-blue-200 text-white"
               >
                 {isLoading ? "Creating..." : "Create Package"}
               </Button>

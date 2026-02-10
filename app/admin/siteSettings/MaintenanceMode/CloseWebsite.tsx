@@ -201,11 +201,11 @@ export default function MaintenanceMode({
   return (
     <div className="space-y-6">
       {/* Status Card */}
-      <Card className={isMaintenanceMode ? "border-red-200 bg-red-50" : "border-green-200 bg-green-50"}>
+      <Card className={isMaintenanceMode ? "border-red-200 bg-red-50" : "border-green-200 bg-blue-200"}>
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className={`p-3 rounded-full ${isMaintenanceMode ? "bg-red-100 text-red-600" : "bg-green-100 text-green-600"}`}>
+              <div className={`p-3 rounded-full ${isMaintenanceMode ? "bg-red-100 text-red-600" : "bg-blue-200 text-green-600"}`}>
                 {isMaintenanceMode ? (
                   <PowerOff className="h-6 w-6" />
                 ) : (
@@ -294,7 +294,7 @@ export default function MaintenanceMode({
               variant="outline"
               size="lg"
               disabled={checkingStatus || loading}
-              className="flex-1 border-[#3838F0] text-[#3838F0] hover:bg-[#3838F0] hover:text-white"
+              className="flex-1 border-blue-500 text-blue-400 hover:bg-blue-200 hover:text-white"
             >
               <Power className="h-5 w-5 mr-2" />
               Check Status

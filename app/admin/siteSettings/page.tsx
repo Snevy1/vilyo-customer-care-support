@@ -51,7 +51,7 @@ export default function SettingsTabs() {
       <Card className="border-0 shadow-lg">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-[#3838F0] rounded-lg">
+            <div className="p-2 bg-blue-400 rounded-lg">
               <SettingsIcon className="h-6 w-6 text-white" />
             </div>
             <div>
@@ -75,7 +75,7 @@ export default function SettingsTabs() {
                 <TabsTrigger
                   key={tab.id}
                   value={tab.id}
-                  className="flex items-center gap-2 py-3 data-[state=active]:bg-[#3838F0] data-[state=active]:text-white"
+                  className="flex items-center gap-2 h-4 py-3 data-[state=active]:bg-blue-400 data-[state=active]:text-white"
                 >
                   {tab.icon}
                   <span className="hidden sm:inline">{tab.label}</span>
@@ -91,7 +91,7 @@ export default function SettingsTabs() {
                     {tab.icon}
                     <h3 className="text-xl font-semibold">{tab.label}</h3>
                   </div>
-                  <p className="text-gray-600">{tab.description}</p>
+                  <p className="text-zinc-600">{tab.description}</p>
                 </div>
                 {tab.component}
               </TabsContent>

@@ -61,7 +61,6 @@ type Tone = "strict" | "neutral" | "friendly" | "empathetic";
 
 
 
-<<<<<<< HEAD
 export interface ProfilePicture {
   imageUrl?: string;
   thumbnailUrl?: string;
@@ -151,9 +150,8 @@ export interface AddAIModelPayload {
   cons: string[];
   isActive: boolean;
   image?: File;
-=======
 
-
+}
 
 // TypeScript types
 export type WhatsAppPlan = typeof whatsAppPlans.$inferSelect;
@@ -169,12 +167,10 @@ export interface WhatsAppPlanLimits {
   analytics?: string[];
   custom_integrations?: boolean;
   max_users?: number;
->>>>>>> 27ce5d12c2c16ea2bb487460e07c595c66e8d1de
 }
 
 
 
-<<<<<<< HEAD
 
 export interface Feature {
   _id: string;
@@ -197,9 +193,12 @@ export interface SubscriptionPackage {
   minItems?: number;
   benefits: string[];
   features: Feature[];
-=======
+
+}
 export type WebchatPlan = typeof webchatPlans.$inferSelect;
 export type NewWebchatPlan = typeof webchatPlans.$inferInsert;
+
+
 
 export interface WebchatPlanLimits {
   max_chats_per_month?: number;
@@ -211,12 +210,10 @@ export interface WebchatPlanLimits {
   chat_history_days?: number;
   response_time_guarantee?: boolean;
   priority_support?: boolean;
->>>>>>> 27ce5d12c2c16ea2bb487460e07c595c66e8d1de
 }
 
 
 
-<<<<<<< HEAD
 
 
 // Add these to your existing subscription types
@@ -294,7 +291,8 @@ export interface PaymentProcessor {
   webhookSecretKey?: string;
   userTypes?: string[] | string;
   orgTypes?: string[] | string;
-=======
+
+}
 // Pricing
 
 
@@ -374,5 +372,4 @@ interface WebChatPlanSelectionProps {
   organizationName: string;
   userEmail: string;
   onBack?: () => void;
->>>>>>> 27ce5d12c2c16ea2bb487460e07c595c66e8d1de
 }

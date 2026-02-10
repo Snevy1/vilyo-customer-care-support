@@ -160,7 +160,7 @@ export default function AddNew(/* { onRefetch } */) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-[#3838F0] text-white flex items-center gap-2">
+        <Button className="bg-blue-400 text-white flex items-center gap-2">
           <Plus className="h-4 w-4" />
           Add New
         </Button>
