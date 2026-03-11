@@ -40,3 +40,29 @@ async function backfillOrganizationId() {
 }
 
 backfillOrganizationId().catch(console.error);
+
+
+
+// Paypal subscription code
+
+// <div id="paypal-button-container-P-8K851338LE4706930NGIAWTQ"></div>
+/* <script src="https://www.paypal.com/sdk/js?client-id=AZcrT1ij_T9iOYxrOmmdBIjpD_JvtAtUc_blIAGXXdQWY3Li1iLnFn21KJjepVa60vvlBP5x5SGZcQxz&vault=true&intent=subscription" data-sdk-integration-source="button-factory"></script>
+<script>
+  paypal.Buttons({
+      style: {
+          shape: 'rect',
+          color: 'gold',
+          layout: 'vertical',
+          label: 'subscribe'
+      },
+      createSubscription: function(data, actions) {
+        return actions.subscription.create({
+          
+          plan_id: 'P-8K851338LE4706930NGIAWTQ'
+        });
+      },
+      onApprove: function(data, actions) {
+        alert(data.subscriptionID); // You can add optional success message for the subscriber here
+      }
+  }).render('#paypal-button-container-P-8K851338LE4706930NGIAWTQ'); // Renders the PayPal button
+</script> */

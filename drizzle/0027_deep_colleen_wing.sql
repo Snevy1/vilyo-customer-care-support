@@ -1,0 +1,20 @@
+CREATE TABLE "subscription_plans" (
+	"id" text PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"product_id" text,
+	"external_plan_id" text NOT NULL,
+	"provider" text DEFAULT 'paypal' NOT NULL,
+	"name" text NOT NULL,
+	"slug" text NOT NULL,
+	"description" text,
+	"price" integer NOT NULL,
+	"currency" text DEFAULT 'USD' NOT NULL,
+	"interval" text DEFAULT 'month' NOT NULL,
+	"features" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"limits" jsonb DEFAULT '{"max_chats":1000,"max_agents":1,"whatsapp_enabled":false,"webchat_enabled":true}'::jsonb NOT NULL,
+	"is_active" boolean DEFAULT true,
+	"sort_order" integer DEFAULT 0,
+	"created_at" timestamp DEFAULT now(),
+	"updated_at" timestamp DEFAULT now(),
+	CONSTRAINT "subscription_plans_external_plan_id_unique" UNIQUE("external_plan_id"),
+	CONSTRAINT "subscription_plans_slug_unique" UNIQUE("slug")
+);

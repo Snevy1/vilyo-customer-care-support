@@ -1,99 +1,144 @@
+import axios, { AxiosInstance } from 'axios';
+import { User, Organization, Subscription } from '@/@types/types';
+import { PaymentProcessor } from '@/components/subscriptions/subscription-checkout';
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
-interface ApiError {
-  error: string;
-  message: string;
-  statusCode?: number;
-}
+/**
+ * 1. Centralized Axios Instance
+ * This replaces the need to create an instance inside every function.
+ */
+const apiClient: AxiosInstance = axios.create({
+  baseURL: API_BASE,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  withCredentials: true, // Replaces credentials: 'include' from fetch
+});
 
+// Request Interceptor: Add tokens if you're using them (LocalStorage/Cookies)
+apiClient.interceptors.request.use((config) => {
+  // If you store your token in localStorage, handle it here:
+  // const token = localStorage.getItem('token');
+  // if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
 
-export class ApiClient {
-  private static async fetchWithTimeout(
-    url: string,
-    options: RequestInit,
-    timeout = 30000
-  ): Promise<Response> {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-    try {
-      const response = await fetch(url, {
-        ...options,
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-      return response;
-    } catch (error) {
-      clearTimeout(timeoutId);
-      if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error('Request timeout - please try again');
-      }
-      throw error;
+// Response Interceptor: Global Error Handling
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const message = error.response?.data?.message || 'Request failed';
+    // Handle 401 Unauthorized globally if needed
+    if (error.response?.status === 401 && typeof window !== 'undefined') {
+      // window.location.href = '/login'; 
     }
+    return Promise.reject(new Error(message));
   }
+);
 
-  private static async handleResponse<T>(response: Response): Promise<T> {
-    const contentType = response.headers.get('content-type');
-    const isJson = contentType?.includes('application/json');
+/**
+ * 2. API Modules
+ */
 
-    if (!response.ok) {
-      let errorMessage = 'An error occurred';
-      
-      if (isJson) {
-        const errorData: ApiError = await response.json();
-        errorMessage = errorData.message || errorData.error || errorMessage;
-      } else {
-        errorMessage = await response.text();
-      }
+// User API
+export const userApi = {
+  getProfile: () => 
+    apiClient.get<User>('/api/admin/profile').then(res => res.data),
 
-      throw new Error(errorMessage);
-    }
+  updateProfile: (userId: string, updates: Partial<User>) => 
+    apiClient.put<User>(`/api/admin/users/${userId}`, updates).then(res => res.data),
 
-    if (isJson) {
-      return response.json();
-    }
+  updateProfilePicture: async (userId: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await apiClient.put<{ profileUrl: string }>(
+      `/api/admin/updateprofile/${userId}`, 
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    return res.data;
+  },
 
-    throw new Error('Invalid response format');
-  }
+  updatePassword: (userId: string, oldPassword: string, newPassword: string) => 
+    apiClient.put(`/api/admin/users/${userId}`, { oldPassword, password: newPassword }),
 
-  static async post<T>(
-    url: string,
-    data: any,
-    options: RequestInit = {}
-  ): Promise<T> {
-    try {
-      const response = await this.fetchWithTimeout(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...options.headers,
-        },
-        body: JSON.stringify(data),
-        ...options,
-      });
+  updateNotificationInterval: (userId: string, interval: number) => 
+    apiClient.put<User>(`/api/admin/users/${userId}`, { 
+      messageNotificationInterval: interval 
+    }).then(res => res.data),
+};
 
-      return this.handleResponse<T>(response);
-    } catch (error) {
-      console.error(`API Error [POST ${url}]:`, error);
-      throw error;
-    }
-  }
+// Organization API
+export const organizationApi = {
+  getCurrentOrganization: () => 
+    apiClient.get<Organization>('/api/organization/fetch').then(res => res.data),
 
-  static async get<T>(url: string, options: RequestInit = {}): Promise<T> {
-    try {
-      const response = await this.fetchWithTimeout(url, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          ...options.headers,
-        },
-        ...options,
-      });
+  getOrganizations: () => 
+    apiClient.get<Organization[]>('/api/admin/organizations').then(res => res.data),
 
-      return this.handleResponse<T>(response);
-    } catch (error) {
-      console.error(`API Error [GET ${url}]:`, error);
-      throw error;
-    }
-  }
-}
+  updateOrganization: (orgId: string, updates: Partial<Organization>) => 
+    apiClient.put<Organization>(`/api/admin/organizations/${orgId}`, updates).then(res => res.data),
+};
+
+// Subscription API
+export const subscriptionApi = {
+  getCurrentSubscription: () => 
+    apiClient.get<Subscription>('/api/subscription/current').then(res => res.data),
+
+  getSubscriptionHistory: () => 
+    apiClient.get<Subscription[]>('/api/subscription/history').then(res => res.data),
+
+  cancelSubscription: () => 
+    apiClient.delete<Subscription>('/api/admin/subscription/cancel').then(res => res.data),
+  verifySubscription: (data:{
+    subscriptionId: string,
+          paymentProvider: string,
+          organizationId: string,
+          planId: string,
+  })=> apiClient.post<{id:string, provider:string, status:string, plan:string}>('/api/subscriptions/verify',data).then(res=>res.data),
+  createCheckoutSession: (data: {
+    organizationId: string;
+    productType: string;
+    planTier: string;
+    paymentProvider: string;
+    planId: string;
+    tenantId?: string;
+    successUrl?: string;
+    cancelUrl?: string;
+    callbackUrl?: string;
+    metadata?: {
+            planName:string,
+            planPrice: number,
+            planInterval: string,
+          }
+  }) => 
+    apiClient.post<{ id: string; url?: string, subscriptionId?:string, authorization_url?:string }>('/api/subscriptions/checkout', data)
+      .then(res => res.data),
+};
+
+// Auth API
+export const authApi = {
+  login: (email: string, password: string) => 
+    apiClient.post<{ user: User; organization: Organization }>('/api/auth/login', { 
+      email, 
+      password 
+    }).then(res => res.data),
+
+  logout: () => apiClient.post('/api/auth/logout'),
+
+  checkAuth: () => 
+    apiClient.get<{ user: User; organization: Organization }>('/api/auth/me').then(res => res.data),
+};
+
+// Payment processors
+
+
+export const paymentProcessorsApi = {
+    PaymentProcessors: () => 
+    apiClient.get<{processors: PaymentProcessor[]}>('/api/subscriptions/payment-processors').then(res => res.data),
+    StripeKey: () =>
+    apiClient.get<{ publishableKey: string }>('/api/subscriptions/payment-processors/stripe/key').then(res => res.data),
+    PaypalClientId: () =>
+    apiClient.get<{ clientId: string }>('/api/subscriptions/payment-processors/paypal/client-id').then(res => res.data),
+};

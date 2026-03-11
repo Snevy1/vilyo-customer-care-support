@@ -53,7 +53,8 @@ export async function GET(request: NextRequest) {
     }
 
     const decrypted = decryptJSON(paypalProcessor.credentials);
-    const clientId = decrypted.clientId;
+    
+    const clientId = decrypted.publicKey;
 
     if (!clientId) {
       return NextResponse.json(

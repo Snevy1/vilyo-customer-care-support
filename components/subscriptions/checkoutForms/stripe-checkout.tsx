@@ -1,11 +1,11 @@
+import { Button } from '@/components/ui/button';
+import toast from "react-hot-toast";
+import { Loader2, ShieldCheck, CreditCard } from "lucide-react";
 import { SubscriptionPlan, SubscriptionResponse } from "../subscription-checkout";
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
 import { useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
-import toast from "react-hot-toast";
-import { ApiClient } from "@/lib/apiClient/apiClient";
-import { Loader2, ShieldCheck, CreditCard } from "lucide-react";
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import axios from 'axios';
 
 interface StripeCheckoutFormProps {
   plan: SubscriptionPlan;
@@ -41,7 +41,7 @@ export const StripeCheckoutForm: React.FC<StripeCheckoutFormProps> = ({
       try {
         setIsLoading(true);
 
-        const response = await ApiClient.post<{
+        const response = await axios.post<{
           requiresSetup: boolean;
           clientSecret?: string;
           customerId?: string;
@@ -51,24 +51,24 @@ export const StripeCheckoutForm: React.FC<StripeCheckoutFormProps> = ({
           planId: string;
         }>('/api/subscriptions/setup', {
           productType,
-          planTier: plan.name.toLowerCase(),
+          planTier: plan?.slug?.toLowerCase() ?? plan?.name?.toLowerCase() ?? '',
           paymentProvider: 'stripe',
         });
 
-        if (!response.requiresSetup) {
+        if (!response.data.requiresSetup) {
           onError('Setup not required for this payment method');
           return;
         }
 
-        if (!response.clientSecret || !response.customerId || !response.planId) {
+        if (!response.data.clientSecret || !response.data.customerId || !response.data.planId) {
           throw new Error('Invalid setup response from server');
         }
 
         setSetupData({
-          clientSecret: response.clientSecret,
-          customerId: response.customerId,
-          setupId: response.setupId || '',
-          planId: response.planId,
+          clientSecret: response.data.clientSecret,
+          customerId: response.data.customerId,
+          setupId: response.data.setupId || '',
+          planId: response.data.planId,
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to initialize payment';
@@ -107,7 +107,7 @@ export const StripeCheckoutForm: React.FC<StripeCheckoutFormProps> = ({
       processingRef.current = true;
       setIsLoading(true);
 
-      // Step 1: Confirm card setup
+      // Step 1: Confirm card setup with Stripe
       const { error: confirmError, setupIntent } = await stripe.confirmCardSetup(
         setupData.clientSecret,
         {
@@ -129,7 +129,7 @@ export const StripeCheckoutForm: React.FC<StripeCheckoutFormProps> = ({
       }
 
       // Step 2: Finalize subscription on backend
-      const subscription = await ApiClient.post<SubscriptionResponse>(
+      const response = await axios.post<SubscriptionResponse>(
         '/api/subscriptions/finalize',
         {
           setupId: setupIntent.id,
@@ -142,7 +142,7 @@ export const StripeCheckoutForm: React.FC<StripeCheckoutFormProps> = ({
         }
       );
 
-      onSuccess(subscription);
+      onSuccess(response.data);
       toast.success('Subscription activated successfully!');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to complete checkout';

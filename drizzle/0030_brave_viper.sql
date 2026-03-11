@@ -1,0 +1,1 @@
+ALTER TABLE "fullSubscription" ADD COLUMN "current_period_start" timestamp with time zone DEFAULT now();

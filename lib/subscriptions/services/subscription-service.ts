@@ -1,7 +1,7 @@
 // services/subscription-service.ts
 import { db } from "@/db/client";
 import { ProductType, SUBSCRIPTION_PLANS } from "../subscriptions";
-import { crmSubscription, organizations, whatsAppSubscription } from "@/db/schema";
+import { crmSubscription, fullSubscription, organizations, whatsAppSubscription } from "@/db/schema";
 import { eq, and, gte, lte, desc, inArray } from "drizzle-orm";
 import { PaymentProvider,Subscription as ProviderSubscription } from "@/app/api/subscriptions/interfaces/payment-provider.interface";
 
@@ -107,6 +107,7 @@ export class SubscriptionService {
   constructor(private paymentProvider: PaymentProvider) {}
   
   
+  
 
 
 
@@ -129,9 +130,9 @@ async saveSubscriptionToDb(params: {
     providerSubscription
   } = params;
   
-
+console.log("productType:", productType);
   switch(productType) {
-      case 'web_chat':
+      case 'webchat':
         return db.update(organizations)
           .set({
             web_chat_plan: planTier,
@@ -159,17 +160,14 @@ async saveSubscriptionToDb(params: {
           updated_at: new Date(),
         }).returning();
         
-      case 'crm':
-        const crmPlan = SUBSCRIPTION_PLANS.crm[planTier as crmPlanTier];
-        return db.insert(crmSubscription).values({
+      case 'bundle':
+        return db.insert(fullSubscription).values({
           organization_id: organizationId,
           status: 'active',
           plan_tier: planTier,
           plan_id: planId,
           subscription_id: providerSubscription.id,
           provider: paymentProvider,
-          max_contacts: crmPlan?.maxContacts || 0,
-          max_deals: crmPlan?.maxDeals || 0,
           current_period_start: new Date(),
           current_period_end: providerSubscription.currentPeriodEnd,
           created_at: new Date(),

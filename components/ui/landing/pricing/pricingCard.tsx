@@ -1,7 +1,7 @@
 import { PricingCardProps } from "@/@types/types";
 import { Check } from "lucide-react";
 
-export function PricingCard({ plan, isSelected, onSelect, highlightColor = 'indigo', showSavings }: PricingCardProps) {
+export function PricingCard({ plan, isSelected, onSelect, highlightColor = 'indigo', showSavings, isPopular }: PricingCardProps) {
   const colorClasses = {
     indigo: 'bg-indigo-500 text-indigo-400 border-indigo-500',
     blue: 'bg-blue-500 text-blue-400 border-blue-500',
@@ -28,7 +28,7 @@ export function PricingCard({ plan, isSelected, onSelect, highlightColor = 'indi
         </div>
       )}
       
-      <div className={`text-sm font-medium mb-2 ${colorClasses[highlightColor as keyof typeof colorClasses]}`}>
+      <div className={`text-md font-medium mb-2 text-white-900 `}>
         {plan.name}
       </div>
       

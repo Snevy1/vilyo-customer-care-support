@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
     // ---------------- DECRYPT & EXTRACT ----------------
     const decrypted = decryptJSON(stripeProcessor.credentials);
 
-    const publishableKey = decrypted.publishableKey;
+    const publishableKey = decrypted.publicKey;
 
     if (!publishableKey) {
       return NextResponse.json(
