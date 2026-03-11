@@ -1,3 +1,5 @@
+
+"use client"
 import React, { useState } from 'react';
 import CloseWebsite from './CloseWebsite';
 import { HammerIcon } from 'lucide-react';
