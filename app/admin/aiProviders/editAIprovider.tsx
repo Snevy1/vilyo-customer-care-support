@@ -1,3 +1,6 @@
+
+"use client"
+
 import { Settings } from "lucide-react";
 import { Circle, CloudUploadIcon, Plus, X } from "lucide-react";
 import React, { useState, useEffect, useRef } from "react";

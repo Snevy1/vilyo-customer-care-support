@@ -1,3 +1,5 @@
+"use client"
+
 import { useCallback, useRef, useState } from "react";
 import { SubscriptionPlan, SubscriptionResponse } from "../subscription-checkout";
 import toast from "react-hot-toast";

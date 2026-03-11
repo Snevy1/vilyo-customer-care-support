@@ -1,3 +1,5 @@
+"use client"
+
 import React, { useState } from "react";
 import { PoundSterling } from "lucide-react";
 import EditDuration from "./EditDuration";

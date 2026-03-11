@@ -1,3 +1,5 @@
+"use client"
+
 import { Circle, CloudUploadIcon, Plus, X } from "lucide-react";
 import React, { useState, useRef } from "react";
 //import { useStore } from "@/store/store";

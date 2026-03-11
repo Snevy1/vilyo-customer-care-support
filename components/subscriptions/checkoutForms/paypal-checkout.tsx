@@ -1,3 +1,5 @@
+"use client"
+
 import { PayPalButtons, usePayPalScriptReducer } from "@paypal/react-paypal-js";
 import { SubscriptionPlan, SubscriptionResponse } from "../subscription-checkout";
 import { useCallback, useRef, useState, useEffect } from "react";

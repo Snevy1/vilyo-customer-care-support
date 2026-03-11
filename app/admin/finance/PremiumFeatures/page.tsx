@@ -1,3 +1,5 @@
+"use client"
+
 import { PoundSterling } from "lucide-react";
 import AddFeature from "./AddFeature";
 import { useState, useEffect } from "react";

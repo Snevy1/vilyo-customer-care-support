@@ -1,3 +1,4 @@
+"use client"
 import { X, Plus, Minus } from "lucide-react";
 import { useEffect, useState } from "react";
 import "../../globals.css"
