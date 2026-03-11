@@ -60,7 +60,7 @@ export const ProviderSelection: React.FC<ProviderSelectionProps> = ({
                   className="h-full w-full object-contain text-zinc-700"
                   onError={(e) => {
                     // Fallback for broken images
-                    e.currentTarget.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='64' height='64' fill='%23e5e7eb' rx='8'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='10' font-weight='600' fill='%236b7280'%3E${processor.displayName}%3C/text%3E%3C/svg%3E`;
+                    e.currentTarget.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='64' height='64' fill='%23e5e7eb' rx='8'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='10' font-weight='600' fill='%236b7280'%3E${processor.display_name}%3C/text%3E%3C/svg%3E`;
                   }}
                 />
               </div>
@@ -71,10 +71,10 @@ export const ProviderSelection: React.FC<ProviderSelectionProps> = ({
               </h3>
 
               {/* Currencies */}
-              <Badge variant="outline" className="mb-3 text-xs">
+              {/* <Badge variant="outline" className="mb-3 text-xs">
                 {processor.supportedCurrencies.slice(0, 3).join(', ')}
                 {processor.supportedCurrencies.length > 3 && ' +more'}
-              </Badge>
+              </Badge> */}
 
               {/* Selected Indicator */}
               {selectedProvider?.id === processor.id && (
