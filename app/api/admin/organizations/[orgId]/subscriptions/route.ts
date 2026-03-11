@@ -4,13 +4,9 @@ import { db } from "@/db/client";
 import { organizations } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
-interface RouteParams {
-  params: {
-    orgId: string;
-  };
-}
 
-export async function GET(request: NextRequest, { params }: RouteParams) {
+
+export async function GET(request: NextRequest,{params}:{ params: Promise<{ orgId: string }>}) {
   try {
     // ---------------- AUTH ----------------
     const cookieStore = await cookies();
@@ -21,7 +17,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     const { organization_id, role } = JSON.parse(userSession);
-    const { orgId } = params;
+    const { orgId } =  await params;
 
     // ---------------- AUTHORIZATION ----------------
     if (role === "TENANT_ADMIN" && organization_id !== orgId) {
