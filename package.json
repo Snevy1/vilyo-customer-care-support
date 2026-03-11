@@ -12,7 +12,8 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "seed:whatsapp": "ts-node db/seed/whatsapp-plans.ts",
-    "seed:webchat": "ts-node db/seed/webchat-plans.ts"
+    "seed:webchat": "ts-node db/seed/webchat-plans.ts",
+    "seed:subscriptions": "ts-node db/seed/subscriptionPlans.ts"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^7.1.0",

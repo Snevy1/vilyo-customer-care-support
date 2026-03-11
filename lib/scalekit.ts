@@ -2,7 +2,7 @@
 
 import {Scalekit} from '@scalekit-sdk/node';
 
-console.log(process.env.SCALEKIT_ENVIRONMENT_URL)
+
 
 const scalekit = new Scalekit(
      process.env.SCALEKIT_ENVIRONMENT_URL!,

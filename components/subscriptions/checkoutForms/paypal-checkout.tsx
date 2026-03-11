@@ -1,15 +1,10 @@
 import { PayPalButtons, usePayPalScriptReducer } from "@paypal/react-paypal-js";
 import { SubscriptionPlan, SubscriptionResponse } from "../subscription-checkout";
-<<<<<<< HEAD
-import { useCallback, useRef, useState } from "react";
-import { subscriptionApi } from "@/lib/apiClient/apiClient";
-=======
 import { useCallback, useRef, useState, useEffect } from "react";
-import { ApiClient } from "@/lib/apiClient/apiClient";
->>>>>>> 27ce5d12c2c16ea2bb487460e07c595c66e8d1de
 import toast from "react-hot-toast";
 import { AlertCircle, Loader2, ShieldCheck } from "lucide-react";
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import axios from 'axios';
 
 interface PayPalButtonWrapperProps {
   plan: SubscriptionPlan;
@@ -43,7 +38,7 @@ export const PayPalButtonWrapper: React.FC<PayPalButtonWrapperProps> = ({
       try {
         setIsProcessing(true);
 
-        const response = await ApiClient.post<{
+        const response = await axios.post<{
           requiresSetup: boolean;
           requiresRedirect?: boolean;
           redirectUrl?: string;
@@ -54,23 +49,24 @@ export const PayPalButtonWrapper: React.FC<PayPalButtonWrapperProps> = ({
           planId: string;
         }>('/api/subscriptions/setup', {
           productType,
-          planTier: plan.name.toLowerCase(),
+          planTier: plan?.slug?.toLowerCase() ?? plan?.name?.toLowerCase() ?? '',
           paymentProvider: 'paypal',
         });
 
-        if (!response.requiresSetup) {
+        if (!response.data.requiresSetup) {
           onError('Setup not required for this payment method');
           return;
         }
 
-        // For PayPal, we get the setupId (which is the PayPal subscription ID)
-        // But we don't redirect yet - we use PayPal buttons instead
-        if (response.setupId && response.customerId && response.planId) {
+        // For PayPal, we get the setupId and customerId
+        if (response.data.customerId && response.data.planId) {
           setSetupData({
-            setupId: response.setupId,
-            customerId: response.customerId,
-            planId: response.planId,
+            setupId: response.data.setupId || '',
+            customerId: response.data.customerId,
+            planId: response.data.planId,
           });
+        } else {
+          throw new Error('Invalid setup response from server');
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to initialize PayPal';
@@ -93,46 +89,27 @@ export const PayPalButtonWrapper: React.FC<PayPalButtonWrapperProps> = ({
       throw new Error('Subscription creation already in progress');
     }
 
+    if (!setupData) {
+      throw new Error('Setup data not initialized');
+    }
+
     try {
       processingRef.current = true;
       setIsProcessing(true);
 
-<<<<<<< HEAD
-      // Create subscription on backend
-         const response = await subscriptionApi.createCheckoutSession({
-          organizationId,
-          productType,
-          planTier: plan.name.toLowerCase(),
-          paymentProvider: 'paypal',
-          planId: plan.providerPlanId,
-          tenantId,
-          metadata: {
-            planName: plan.name,
-            planPrice: plan.price,
-            planInterval: plan.interval,
-          },
-        })
-      
-
-      if (!response.subscriptionId) {
-        throw new Error('Invalid response from server');
-      }
-
-      return response.subscriptionId;
-=======
       // Use PayPal's SDK to create the subscription
       return actions.subscription.create({
-        plan_id: plan.providerPlanId, // PayPal plan ID
+        plan_id: setupData.planId, // PayPal plan ID from setup
       });
->>>>>>> 27ce5d12c2c16ea2bb487460e07c595c66e8d1de
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to create subscription';
       onError(message);
+      toast.error(message);
       throw error;
     } finally {
       processingRef.current = false;
     }
-  }, [plan.providerPlanId, onError]);
+  }, [setupData, onError]);
 
   const onApprove = useCallback(async (data: any, actions: any) => {
     if (processingRef.current) return;
@@ -145,31 +122,25 @@ export const PayPalButtonWrapper: React.FC<PayPalButtonWrapperProps> = ({
         throw new Error('No subscription ID received from PayPal');
       }
 
-<<<<<<< HEAD
-      // Verify subscription on backend
-      const response = await subscriptionApi.verifySubscription({
-          subscriptionId: data.subscriptionID,
-         paymentProvider: 'paypal',
-          organizationId,
-          planId: plan.id,
-        });
-=======
+      if (!setupData) {
+        throw new Error('Setup data not available');
+      }
+
       // Finalize subscription on backend
-      const subscription = await ApiClient.post<SubscriptionResponse>(
+      const response = await axios.post<SubscriptionResponse>(
         '/api/subscriptions/finalize',
         {
-          setupId: data.subscriptionID,
-          customerId: organizationId,
+          setupId: data.subscriptionID, // PayPal subscription ID
+          customerId: setupData.customerId,
           productType,
           planTier: plan.name.toLowerCase(),
-          planId: plan.providerPlanId,
+          planId: setupData.planId,
           paymentProvider: 'paypal',
           tenantId,
         }
       );
->>>>>>> 27ce5d12c2c16ea2bb487460e07c595c66e8d1de
 
-      onSuccess(subscription);
+      onSuccess(response.data);
       toast.success('Subscription activated successfully!');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to finalize subscription';
@@ -180,17 +151,21 @@ export const PayPalButtonWrapper: React.FC<PayPalButtonWrapperProps> = ({
       setIsProcessing(false);
       processingRef.current = false;
     }
-  }, [organizationId, productType, plan, tenantId, onSuccess, onError]);
+  }, [setupData, organizationId, productType, plan, tenantId, onSuccess, onError]);
 
   const onPayPalError = useCallback((err: any) => {
     console.error('PayPal error:', err);
     const message = err?.message || 'An error occurred with PayPal. Please try again.';
     onError(message);
     toast.error(message);
+    setIsProcessing(false);
+    processingRef.current = false;
   }, [onError]);
 
   const onCancel = useCallback(() => {
     toast.error('Payment canceled');
+    setIsProcessing(false);
+    processingRef.current = false;
   }, []);
 
   if (isPending) {
@@ -210,6 +185,15 @@ export const PayPalButtonWrapper: React.FC<PayPalButtonWrapperProps> = ({
           Failed to load PayPal. Please refresh the page or try a different payment method.
         </AlertDescription>
       </Alert>
+    );
+  }
+
+  if (!setupData) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="mr-2 h-6 w-6 animate-spin text-primary" />
+        <span>Initializing PayPal setup...</span>
+      </div>
     );
   }
 

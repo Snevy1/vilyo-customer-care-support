@@ -190,6 +190,34 @@
       "when": 1770551037359,
       "tag": "0026_overconfident_silver_sable",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1771064595886,
+      "tag": "0027_deep_colleen_wing",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1773094395599,
+      "tag": "0028_common_ravenous",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1773244810893,
+      "tag": "0029_true_the_leader",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1773248539506,
+      "tag": "0030_brave_viper",
+      "breakpoints": true
     }
   ]
 }

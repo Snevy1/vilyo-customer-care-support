@@ -1,91 +1,169 @@
 // services/plan-mapping.service.ts
-import { ProductType} from "../subscriptions";
+import { ProductType } from "../subscriptions";
 
+// Define provider-specific IDs
+interface ProviderIds {
+  paypal?: string;      // PayPal Plan ID
+  stripe?: string;       // Stripe Price ID
+  paystack?: string;     // Paystack Plan Code
+}
 
-const PLANS = {
-  web_chat: {
-    free: {
-      paystack: null,
-      stripe: null,
-      paypal: null,
+const staticPlans = [
+  {
+    name: "Vilyo Support AI (Web Only)",
+    slug: "web-support-basic",
+    description: "Standard web-based chatbot for your website.",
+    productId: "PROD-10349113AH7231608", //  internal product ID
+    providerIds: {
+      paypal: "P-3AS187416C269694RNGIEDRY",
+      stripe: "price_1T9eJO7sqKlK93lgki7oyqot", //  Stripe Price ID
+      // paystack: "PAYSTACK_PLAN_CODE", // Add when needed
+      paystack: "PAYSTACK_PLAN_CODE_PREMIUM"
     },
-    pro: {
-      paystack: process.env.PAYSTACK_WEB_CHAT_PRO_PLAN_CODE,
-      stripe: process.env.STRIPE_WEB_CHAT_PRO_PRICE_ID || 'price_web_chat_pro_monthly',
-      paypal: process.env.PAYPAL_WEB_CHAT_PRO_PLAN_ID || 'P-WEB-CHAT-PRO',
+    price: 2900, // Amount in cents
+    currency: "usd",
+    interval: "month", // month or year
+    limits: {
+      whatsapp_enabled: false,
+      webchat_enabled: true,
+      max_messages: 1000,
     },
+    features: ["Custom Branding", "Web Widget", "AI Training"],
+    is_default: true,
   },
-  whatsapp: {
-    standard: {
-      paystack: process.env.PAYSTACK_WHATSAPP_STANDARD_PLAN_CODE,
-      stripe: process.env.STRIPE_WHATSAPP_STANDARD_PRICE_ID || 'price_whatsapp_standard_monthly',
-      paypal: process.env.PAYPAL_WHATSAPP_STANDARD_PLAN_ID || 'P-WHATSAPP-STANDARD',
+  {
+    name: "whatsApp Chatbot Plan",
+    slug: "whatsapp-only",
+    description: "Automate your customer support on WhatsApp.",
+    productId: "PROD-10349113AH7231608",
+    providerIds: {
+      paypal: "P-0D976339TV311024ENGIETFQ",
+      stripe: "price_1T9eJO7sqKlK93lgLz4EiZzK", //  Stripe Price ID
+      paystack: "PAYSTACK_PLAN_CODE_PREMIUM"
     },
-    premium: {
-      paystack: process.env.PAYSTACK_WHATSAPP_PREMIUM_PLAN_CODE,
-      stripe: process.env.STRIPE_WHATSAPP_PREMIUM_PRICE_ID || 'price_whatsapp_premium_monthly',
-      paypal: process.env.PAYPAL_WHATSAPP_PREMIUM_PLAN_ID || 'P-WHATSAPP-PREMIUM',
+    price: 3900,
+    currency: "usd",
+    interval: "month",
+    limits: {
+      whatsapp_enabled: true,
+      webchat_enabled: false,
+      max_messages: 2000,
     },
+    features: ["WhatsApp Integration", "Auto-Replies", "Contact Sync"],
   },
-  crm: {
-    free: {
-      paystack: null,
-      stripe: null,
-      paypal: null,
+  {
+    name: "Webchatbot + WhatsApp Bundle",
+    slug: "full-ai-bundle",
+    description: "The complete package for web and mobile support.",
+    productId: "PROD-10349113AH7231608",
+    providerIds: {
+      paypal: "P-45V132265G642635JNGIEHGA",
+      stripe: "price_1T9eSU7sqKlK93lg5QOiWKHs", //  Stripe Price ID
+      paystack: "PAYSTACK_PLAN_CODE_PREMIUM", // Example Paystack Plan Code
     },
-    pro: {
-      paystack: process.env.PAYSTACK_CRM_PRO_PLAN_CODE,
-      stripe: process.env.STRIPE_CRM_PRO_PRICE_ID || 'price_crm_pro_monthly',
-      paypal: process.env.PAYPAL_CRM_PRO_PLAN_ID || 'P-CRM-PRO',
+    price: 5900,
+    currency: "usd",
+    interval: "month",
+    limits: {
+      whatsapp_enabled: true,
+      webchat_enabled: true,
+      max_messages: 5000,
     },
-    enterprise: {
-      paystack: process.env.PAYSTACK_CRM_ENTERPRISE_PLAN_CODE,
-      stripe: process.env.STRIPE_CRM_ENTERPRISE_PRICE_ID || 'price_crm_enterprise_monthly',
-      paypal: process.env.PAYPAL_CRM_ENTERPRISE_PLAN_ID || 'P-CRM-ENTERPRISE',
-    },
+    features: ["Everything in Web + WhatsApp", "Priority Support", "Analytics"],
+    is_popular: true,
   },
-} as const;
+];
+
+// Type for the plan
+export type Plan = typeof staticPlans[0];
 
 export function getPlanId(
   productType: ProductType,
-  planTier: string,
-  provider: 'paystack' | 'stripe' | 'paypal'
+  planSlug: string, // Better to use slug than name
+  provider: "paypal" | "paystack" | "stripe"
 ): string | null {
-  // Type-safe access with proper checks
-  const productPlans = PLANS[productType as keyof typeof PLANS];
+  // Find by slug (more reliable than name)
+  const plan = staticPlans.find(
+    (p) => p.slug === planSlug
+  );
+
   
-  if (!productPlans) {
-    throw new Error(`Invalid product type: ${productType}`);
+  if (!plan) {
+    throw new Error(
+      `No plan found for slug "${planSlug}"`
+    );
   }
+
+  // Get the provider-specific ID
+  const providerId = plan.providerIds[provider];
   
-  const tierPlans = productPlans[planTier as keyof typeof productPlans];
-  
-  if (!tierPlans) {
-    throw new Error(`Invalid plan tier for ${productType}: ${planTier}`);
+  if (!providerId) {
+    throw new Error(
+      `No ${provider} ID configured for plan "${plan.name}"`
+    );
   }
-  
-  const planId = tierPlans[provider];
-  
-  // For free plans, return null
-  if (planId === null) {
-    return null;
-  }
-  
-  if (!planId && planTier !== 'free') {
-    throw new Error(`Plan configuration missing for ${productType}.${planTier}.${provider}`);
-  }
-  
-  return planId;
+
+  return providerId;
 }
 
-// Helper to get all available tiers for a product
-export function getAvailableTiers(productType: ProductType): string[] {
-  const productPlans = PLANS[productType as keyof typeof PLANS];
-  return productPlans ? Object.keys(productPlans) : [];
+// Alternative: still support name-based lookup if needed
+export function getPlanIdByName(
+  productType: ProductType,
+  planName: string,
+  provider: "paypal" | "paystack" | "stripe"
+): string | null {
+  const plan = staticPlans.find(
+    (p) => p.name.toLowerCase() === planName.toLowerCase()
+  );
+
+  if (!plan) {
+    throw new Error(
+      `No plan found for name "${planName}"`
+    );
+  }
+
+  const providerId = plan.providerIds[provider];
+  
+  if (!providerId) {
+    throw new Error(
+      `No ${provider} ID configured for plan "${plan.name}"`
+    );
+  }
+
+  return providerId;
 }
 
-// Helper to check if a plan is free
-export function isFreePlan(productType: ProductType, planTier: string): boolean {
-  const planId = getPlanId(productType, planTier, 'paystack'); // Check any provider
-  return planId === null;
+export function getAvailableTiers(productType: ProductType): Plan[] {
+  // Return full plan objects instead of just names
+  return staticPlans;
 }
+
+export function getPlanBySlug(slug: string): Plan | null {
+  return staticPlans.find((p) => p.slug === slug) ?? null;
+}
+
+// New utility functions for provider-specific needs
+export function getStripePriceId(planSlug: string): string | null {
+  const plan = getPlanBySlug(planSlug);
+  return plan?.providerIds.stripe ?? null;
+}
+
+export function getPaypalPlanId(planSlug: string): string | null {
+  const plan = getPlanBySlug(planSlug);
+  return plan?.providerIds.paypal ?? null;
+}
+
+// For frontend display (without exposing provider IDs)
+export function getPublicPlans() {
+  return staticPlans.map(({ providerIds, ...publicPlan }) => ({
+    ...publicPlan,
+    // Don't expose provider IDs to frontend
+  }));
+}
+
+export function isFreePlan(productType: ProductType, planSlug: string): boolean {
+  const plan = getPlanBySlug(planSlug);
+  return plan ? plan.price === 0 : false;
+}
+
+export { staticPlans };

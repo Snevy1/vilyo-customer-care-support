@@ -19,9 +19,10 @@ import { Separator } from "@/components/ui/separator";
 
 interface DeleteProcessorProps {
   processorId: string;
+  onSuccess: () => void;
 }
 
-export default function DeleteProcessor({ processorId }: DeleteProcessorProps) {
+export default function DeleteProcessor({ processorId,onSuccess }: DeleteProcessorProps) {
   const [open, setOpen] = useState(false);
   // const [deletePaymentProcessor, { isLoading: isDeleting }] = useRemovePaymentProcessorMutation();
 

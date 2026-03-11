@@ -1,252 +1,178 @@
 
-
 "use client";
 
-import {  Zap, MessageSquare, Database } from 'lucide-react';
+import { Zap, MessageSquare, Smartphone, Globe } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Plan, SelectedPlan } from '@/@types/types';
 import { PricingCard } from './pricingCard';
-import { ProductSection } from './productSection';
 import { FAQItem } from './faqItem';
 
+// Types matching your database schema
+interface Plan {
+  id?: string;
+  name: string;
+  slug: string;
+  description: string;
+  productId?: string;
+  externalPlanId: string;
+  price: number; // in cents
+  provider: 'paypal' | 'stripe';
+  limits: {
+    whatsapp_enabled: boolean;
+    webchat_enabled: boolean;
+    max_messages?: number;
+  };
+  features: string[];
+  is_popular?: boolean;
+  is_default?: boolean;
+}
 
+interface SelectedPlan {
+  webchat?: string;
+  whatsapp?: string;
+  bundle?: string;
+}
 
 export default function Pricing() {
   const router = useRouter();
-  const [selectedPlans, setSelectedPlans] = useState<SelectedPlan>({});
+  const [selectedPlan, setSelectedPlan] = useState<'webchat' | 'whatsapp' | 'bundle'>('webchat');
   const [loading, setLoading] = useState(false);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [totalPrice, setTotalPrice] = useState(0);
-  
-  // Mock CRM plans (static for now)
-  const crmPlans = [
+
+  // Static plans matching your seed data
+  const staticPlans: Plan[] = [
     {
-      id: '1',
-      plan_id: 'crm_free',
-      name: 'Free',
-      display_name: 'Free CRM',
-      description: 'Basic CRM for small businesses',
-      price: 0,
-      currency: 'USD',
-      billing_interval: 'month',
-      features: [
-        'Up to 50 contacts',
-        'Basic contact management',
-        'Email support',
-        'Simple pipeline'
-      ],
-      product_type: 'crm' as const,
+      name: "Vilyo Support AI (Web Only)",
+      slug: "web-support-basic",
+      description: "Standard web-based chatbot for your website.",
+      productId: "PROD-10349113AH7231608",
+      externalPlanId: "P-3AS187416C269694RNGIEDRY",
+      price: 2900, // $29.00
+      provider: "paypal",
+      limits: {
+        whatsapp_enabled: false,
+        webchat_enabled: true,
+        max_messages: 1000,
+      },
+      features: ["Custom Branding", "Web Widget", "AI Training"],
       is_default: true
     },
     {
-      id: '2',
-      plan_id: 'crm_pro',
-      name: 'Professional',
-      display_name: 'Professional CRM',
-      description: 'Advanced CRM for growing teams',
-      price: 49,
-      currency: 'USD',
-      billing_interval: 'month',
-      features: [
-        'Up to 1,000 contacts',
-        'Advanced analytics',
-        'Priority support',
-        'Custom pipelines',
-        'API access'
-      ],
-      product_type: 'crm' as const,
+      name: "WhatsApp Chatbot Plan",
+      slug: "whatsapp-only",
+      description: "Automate your customer support on WhatsApp.",
+      productId: "PROD-10349113AH7231608",
+      externalPlanId: "P-0D976339TV311024ENGIETFQ",
+      price: 3900, // $39.00
+      provider: "paypal",
+      limits: {
+        whatsapp_enabled: true,
+        webchat_enabled: false,
+        max_messages: 2000,
+      },
+      features: ["WhatsApp Integration", "Auto-Replies", "Contact Sync"],
+    },
+    {
+      name: "Webchatbot + WhatsApp Bundle",
+      slug: "full-ai-bundle",
+      description: "The complete package for web and mobile support.",
+      productId: "PROD-10349113AH7231608",
+      externalPlanId: "P-45V132265G642635JNGIEHGA",
+      price: 5900, // $59.00
+      provider: "paypal",
+      limits: {
+        whatsapp_enabled: true,
+        webchat_enabled: true,
+        max_messages: 5000,
+      },
+      features: ["Everything in Web + WhatsApp", "Priority Support", "Analytics"],
       is_popular: true
     },
-    {
-      id: '3',
-      plan_id: 'crm_enterprise',
-      name: 'Enterprise',
-      display_name: 'Enterprise CRM',
-      description: 'Full-featured CRM for large organizations',
-      price: 99,
-      currency: 'USD',
-      billing_interval: 'month',
-      features: [
-        'Unlimited contacts',
-        'Custom reporting',
-        '24/7 phone support',
-        'SSO integration',
-        'Custom workflows'
-      ],
-      product_type: 'crm' as const
-    }
-  ];
-
-  // Bundle plans (static)
-  const bundlePlans = [
-    {
-      id: 'bundle_starter',
-      plan_id: 'bundle_starter',
-      name: 'Business Starter',
-      display_name: 'Business Starter Bundle',
-      description: 'Everything you need to get started',
-      price: 79,
-      currency: 'USD',
-      billing_interval: 'month',
-      features: [
-        'WebChat Starter Plan',
-        'WhatsApp Basic Plan',
-        'CRM Professional Plan',
-        'Unified dashboard',
-        'Priority support'
-      ],
-      product_type: 'bundle' as const,
-      savings: 30 // Percentage saved
-    },
-    {
-      id: 'bundle_pro',
-      plan_id: 'bundle_pro',
-      name: 'Business Pro',
-      display_name: 'Business Pro Bundle',
-      description: 'Complete suite for growing businesses',
-      price: 149,
-      currency: 'USD',
-      billing_interval: 'month',
-      features: [
-        'WebChat Professional Plan',
-        'WhatsApp Professional Plan',
-        'CRM Enterprise Plan',
-        'Advanced analytics',
-        '24/7 dedicated support',
-        'Custom integrations'
-      ],
-      product_type: 'bundle' as const,
-      is_popular: true,
-      savings: 40
-    }
   ];
 
   useEffect(() => {
-    fetchPlans();
+    setPlans(staticPlans);
   }, []);
 
   useEffect(() => {
     calculateTotal();
-  }, [selectedPlans, plans]);
+  }, [selectedPlan, plans]);
 
-  const fetchPlans = async () => {
-    try {
-      setLoading(true);
-      
-      // Fetch WebChat and WhatsApp plans from APIs
-      const [webchatResponse, whatsappResponse] = await Promise.all([
-        fetch('/api/admin/subscriptions/plans/webchatbot?activeOnly=true').then(res => res.json()),
-        fetch('/api/admin/subscriptions/plans/whatsapp?activeOnly=true').then(res => res.json())
-      ]);
-
-      const allPlans: Plan[] = [
-        ...(webchatResponse.success ? webchatResponse.data.map((plan: any) => ({
-          ...plan,
-          product_type: 'webchat' as const
-        })) : []),
-        ...(whatsappResponse.success ? whatsappResponse.data.map((plan: any) => ({
-          ...plan,
-          product_type: 'whatsapp' as const
-        })) : []),
-        ...crmPlans,
-        ...bundlePlans
-      ];
-      setPlans(allPlans);
-      
-      // Auto-select default plans for each category
-      const defaults: SelectedPlan = {};
-      allPlans.forEach(plan => {
-        if (plan.is_default) {
-          if (plan.product_type === 'webchat') defaults.webchat = plan.plan_id;
-          if (plan.product_type === 'whatsapp') defaults.whatsapp = plan.plan_id;
-          if (plan.product_type === 'crm') defaults.crm = plan.plan_id;
-        }
-      });
-      setSelectedPlans(defaults);
-      
-    } catch (error) {
-      console.error('Error fetching plans:', error);
-      // Fallback to static plans
-      setPlans([...crmPlans, ...bundlePlans]);
-    } finally {
-      setLoading(false);
+  const calculateTotal = () => {
+    const plan = plans.find(p => {
+      if (selectedPlan === 'webchat') return p.slug === 'web-support-basic';
+      if (selectedPlan === 'whatsapp') return p.slug === 'whatsapp-only';
+      return p.slug === 'full-ai-bundle';
+    });
+    
+    if (plan) {
+      setTotalPrice(plan.price / 100); // Convert cents to dollars
     }
   };
 
-  const calculateTotal = () => {
-    let total = 0;
-    
-    // Calculate individual plans total
-    Object.entries(selectedPlans).forEach(([productType, planId]) => {
-      if (productType === 'bundle') {
-        // Bundle includes everything, so reset and use bundle price
-        const bundlePlan = plans.find(p => p.plan_id === planId);
-        if (bundlePlan) total = bundlePlan.price;
-      } else if (productType !== 'bundle') {
-        const plan = plans.find(p => p.plan_id === planId);
-        if (plan) total += plan.price;
-      }
-    });
-    
-    setTotalPrice(total);
-  };
-
-  const handlePlanSelect = (productType: keyof SelectedPlan, planId: string) => {
-    setSelectedPlans(prev => {
-      const newSelection = { ...prev };
-      
-      // If selecting a bundle, deselect individual plans
-      if (productType === 'bundle') {
-        delete newSelection.webchat;
-        delete newSelection.whatsapp;
-        delete newSelection.crm;
-        newSelection.bundle = planId;
-      } else {
-        // If selecting individual plan, remove bundle selection
-        delete newSelection.bundle;
-        newSelection[productType] = planId;
-      }
-      
-      return newSelection;
-    });
+  const handlePlanSelect = (planType: 'webchat' | 'whatsapp' | 'bundle') => {
+    setSelectedPlan(planType);
   };
 
   const handleGetStarted = async () => {
-    // Check if user is logged in
     const isAuthenticated = await checkAuth();
     
+    // Find the selected plan
+    const selectedPlanData = plans.find(p => {
+      if (selectedPlan === 'webchat') return p.slug === 'web-support-basic';
+      if (selectedPlan === 'whatsapp') return p.slug === 'whatsapp-only';
+      return p.slug === 'full-ai-bundle';
+    });
+
+    if (!selectedPlanData) return;
+    
+    const selection = {
+      planId: selectedPlanData.externalPlanId,
+      planType: selectedPlan,
+      price: selectedPlanData.price,
+      name: selectedPlanData.slug
+    };
+    
     if (!isAuthenticated) {
-      // Store selections in localStorage and redirect to login
-      localStorage.setItem('pricing_selections', JSON.stringify(selectedPlans));
+      sessionStorage.setItem('pricing_selection', JSON.stringify(selection));
       router.push('/api/auth?redirect=/checkout');
       return;
     }
-    
-    // Redirect to checkout with selections
-    router.push(`/checkout?selections=${encodeURIComponent(JSON.stringify(selectedPlans))}`);
+
+    sessionStorage.setItem('pricing_selection', JSON.stringify(selection));
+    router.push(`/checkout?plan=${selectedPlanData.externalPlanId}`);
   };
 
-  const checkAuth = async (): Promise<boolean> => {
+  const checkAuth = async () => {
     try {
       const response = await fetch('/api/auth/check');
-      return response.ok;
-    } catch {
+      const data = await response.json();
+      return data.authenticated;
+    } catch (error) {
+      console.error('Auth check failed:', error);
       return false;
     }
   };
 
-  const getPlansByProduct = (productType: string) => {
-    return plans.filter(plan => plan.product_type === productType);
+  const getPlanByType = (type: 'webchat' | 'whatsapp' | 'bundle') => {
+    return plans.find(p => {
+      if (type === 'webchat') return p.slug === 'web-support-basic';
+      if (type === 'whatsapp') return p.slug === 'whatsapp-only';
+      return p.slug === 'full-ai-bundle';
+    });
   };
 
-  const getSelectedPlanName = (productType: keyof SelectedPlan) => {
-    const planId = selectedPlans[productType];
-    if (!planId) return 'Not selected';
-    const plan = plans.find(p => p.plan_id === planId);
-    return plan?.display_name || plan?.name || 'Unknown';
-  };
+  const formatPrice = (priceInCents: number): number => {
+  // Converts string back to number
+  return Number((priceInCents / 100).toFixed(2)); 
+};
+
+
+  const webchatPlan = getPlanByType('webchat');
+  const whatsappPlan = getPlanByType('whatsapp');
+  const bundlePlan = getPlanByType('bundle');
 
   if (loading) {
     return (
@@ -265,75 +191,130 @@ export default function Pricing() {
     <section id='pricing' className='py-32 px-6 max-w-7xl mx-auto'>
       <div className='text-center mb-16'>
         <h2 className='text-3xl md:text-4xl font-medium text-white tracking-tight'>
-          Choose Your Perfect Plan
+          Choose Your Plan
         </h2>
         <p className='text-zinc-500 font-light mt-4 max-w-2xl mx-auto'>
-          Mix and match plans across our products, or choose a bundle for maximum savings.
-          Start with any product and add more as you grow.
+          Select the perfect plan for your business needs. Start with web-only, 
+          WhatsApp-only, or get both with our bundle.
         </p>
       </div>
 
-      {/* Bundle Plans Section */}
-      <div className='mb-16'>
-        <div className='flex items-center gap-3 mb-8'>
-          <Zap className='w-6 h-6 text-yellow-500' />
-          <h3 className='text-2xl font-medium text-white'>Bundle & Save</h3>
-          <span className='ml-2 px-3 py-1 bg-yellow-500/20 text-yellow-400 text-sm rounded-full'>
-            Recommended
-          </span>
-        </div>
-        
-        <div className='grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto'>
-          {getPlansByProduct('bundle').map((plan) => (
-            <PricingCard
-              key={plan.plan_id}
-              plan={plan}
-              isSelected={selectedPlans.bundle === plan.plan_id}
-              onSelect={() => handlePlanSelect('bundle', plan.plan_id)}
-              highlightColor='yellow'
-              showSavings={(plan as any).savings}
-            />
-          ))}
-        </div>
+      {/* Pricing Cards */}
+      <div className='grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto mb-16'>
+        {/* Web Only Plan */}
+        {webchatPlan && (
+          <PricingCard
+            key={webchatPlan.externalPlanId}
+            plan={{
+              ...webchatPlan,
+              price: formatPrice(webchatPlan.price),
+              display_name: webchatPlan.name,
+              plan_id: webchatPlan.externalPlanId,
+              currency:'USD',
+              billing_interval: 'Monthly',
+               product_type: "webchat"
+            }}
+            isSelected={selectedPlan === 'webchat'}
+            onSelect={() => handlePlanSelect('webchat')}
+            highlightColor='blue'
+            icon={<Globe className='w-6 h-6' />}
+          />
+        )}
+
+        {/* WhatsApp Only Plan */}
+        {whatsappPlan && (
+          <PricingCard
+            key={whatsappPlan.externalPlanId}
+            plan={{
+              ...whatsappPlan,
+              price: formatPrice(whatsappPlan.price),
+              display_name: whatsappPlan.name,
+              plan_id: whatsappPlan.externalPlanId,
+              currency:'USD',
+              billing_interval: 'Monthly',
+               product_type: 'whatsapp'
+            }}
+            isSelected={selectedPlan === 'whatsapp'}
+            onSelect={() => handlePlanSelect('whatsapp')}
+            highlightColor='green'
+            icon={<Smartphone className='w-6 h-6' />}
+          />
+        )}
+
+        {/* Bundle Plan */}
+        {bundlePlan && (
+          <PricingCard
+            key={bundlePlan.externalPlanId}
+            plan={{
+              ...bundlePlan,
+              price: formatPrice(bundlePlan.price),
+              display_name: bundlePlan.name,
+              plan_id: bundlePlan.externalPlanId,
+              currency:'USD',
+              billing_interval: 'Monthly',
+               product_type: 'bundle'
+            }}
+            isSelected={selectedPlan === 'bundle'}
+            onSelect={() => handlePlanSelect('bundle')}
+            highlightColor='yellow'
+            icon={<Zap className='w-6 h-6' />}
+            isPopular={bundlePlan.is_popular}
+          />
+        )}
       </div>
 
-      {/* Individual Products Section */}
-      <div className='mb-16'>
-        <h3 className='text-2xl font-medium text-white mb-8'>Or Build Your Own Package</h3>
-        
-        <div className='grid grid-cols-1 lg:grid-cols-3 gap-8'>
-          {/* WebChat Plans */}
-          <ProductSection
-            title="WebChat"
-            description="Live chat for your website"
-            icon={<MessageSquare className='w-5 h-5' />}
-            plans={getPlansByProduct('webchat')}
-            selectedPlanId={selectedPlans.webchat}
-            onSelect={(planId) => handlePlanSelect('webchat', planId)}
-            color="blue"
-          />
-          
-          {/* WhatsApp Plans */}
-          <ProductSection
-            title="WhatsApp"
-            description="Business messaging platform"
-            icon={<MessageSquare className='w-5 h-5' />}
-            plans={getPlansByProduct('whatsapp')}
-            selectedPlanId={selectedPlans.whatsapp}
-            onSelect={(planId) => handlePlanSelect('whatsapp', planId)}
-            color="green"
-          />
-          
-          {/* CRM Plans */}
-          <ProductSection
-            title="CRM"
-            description="Customer relationship management"
-            icon={<Database className='w-5 h-5' />}
-            plans={getPlansByProduct('crm')}
-            selectedPlanId={selectedPlans.crm}
-            onSelect={(planId) => handlePlanSelect('crm', planId)}
-            color="purple"
-          />
+      {/* Plan Comparison */}
+      <div className='bg-zinc-900/50 border border-white/10 rounded-2xl p-8 max-w-4xl mx-auto mb-16'>
+        <h3 className='text-2xl font-medium text-white mb-6 text-center'>Compare Features</h3>
+        <div className='overflow-x-auto'>
+          <table className='w-full text-left'>
+            <thead>
+              <tr className='border-b border-white/10'>
+                <th className='py-4 text-zinc-400 font-light'>Feature</th>
+                <th className='py-4 text-center text-white'>Web Only</th>
+                <th className='py-4 text-center text-white'>WhatsApp Only</th>
+                <th className='py-4 text-center text-white'>Bundle</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className='border-b border-white/10'>
+                <td className='py-4 text-zinc-300'>Web Chat Widget</td>
+                <td className='py-4 text-center text-green-400'>✓</td>
+                <td className='py-4 text-center text-red-400'>✗</td>
+                <td className='py-4 text-center text-green-400'>✓</td>
+              </tr>
+              <tr className='border-b border-white/10'>
+                <td className='py-4 text-zinc-300'>WhatsApp Integration</td>
+                <td className='py-4 text-center text-red-400'>✗</td>
+                <td className='py-4 text-center text-green-400'>✓</td>
+                <td className='py-4 text-center text-green-400'>✓</td>
+              </tr>
+              <tr className='border-b border-white/10'>
+                <td className='py-4 text-zinc-300'>Monthly Messages</td>
+                <td className='py-4 text-center'>1,000</td>
+                <td className='py-4 text-center'>2,000</td>
+                <td className='py-4 text-center'>5,000</td>
+              </tr>
+              <tr className='border-b border-white/10'>
+                <td className='py-4 text-zinc-300'>Custom Branding</td>
+                <td className='py-4 text-center text-green-400'>✓</td>
+                <td className='py-4 text-center text-green-400'>✓</td>
+                <td className='py-4 text-center text-green-400'>✓</td>
+              </tr>
+              <tr className='border-b border-white/10'>
+                <td className='py-4 text-zinc-300'>AI Training</td>
+                <td className='py-4 text-center text-green-400'>✓</td>
+                <td className='py-4 text-center text-green-400'>✓</td>
+                <td className='py-4 text-center text-green-400'>✓</td>
+              </tr>
+              <tr>
+                <td className='py-4 text-zinc-300'>Priority Support</td>
+                <td className='py-4 text-center text-zinc-500'>-</td>
+                <td className='py-4 text-center text-zinc-500'>-</td>
+                <td className='py-4 text-center text-green-400'>✓</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -342,41 +323,22 @@ export default function Pricing() {
         <div className='flex flex-col md:flex-row justify-between items-center gap-6'>
           <div>
             <h4 className='text-xl font-medium text-white mb-2'>Your Selection</h4>
-            <div className='text-zinc-400 space-y-1'>
-              {selectedPlans.bundle ? (
-                <p className='flex items-center gap-2'>
-                  <Zap className='w-4 h-4 text-yellow-500' />
-                  {getSelectedPlanName('bundle')} Bundle
-                </p>
-              ) : (
-                <>
-                  {selectedPlans.webchat && (
-                    <p>WebChat: {getSelectedPlanName('webchat')}</p>
-                  )}
-                  {selectedPlans.whatsapp && (
-                    <p>WhatsApp: {getSelectedPlanName('whatsapp')}</p>
-                  )}
-                  {selectedPlans.crm && (
-                    <p>CRM: {getSelectedPlanName('crm')}</p>
-                  )}
-                </>
-              )}
-            </div>
+            <p className='text-zinc-400'>
+              {selectedPlan === 'webchat' && webchatPlan?.name}
+              {selectedPlan === 'whatsapp' && whatsappPlan?.name}
+              {selectedPlan === 'bundle' && bundlePlan?.name}
+            </p>
           </div>
           
           <div className='text-right'>
             <div className='text-3xl font-medium text-white mb-1'>
               ${totalPrice}<span className='text-lg text-zinc-400 font-light'>/month</span>
             </div>
-            <p className='text-zinc-500 text-sm'>
-              {selectedPlans.bundle ? 'Everything included' : 'Custom package'}
-            </p>
           </div>
           
           <button
             onClick={handleGetStarted}
             className='bg-white text-black px-8 py-3 rounded-xl hover:bg-zinc-200 transition-colors text-sm font-medium cursor-pointer w-full md:w-auto'
-            disabled={!selectedPlans.bundle && !selectedPlans.webchat && !selectedPlans.whatsapp && !selectedPlans.crm}
           >
             Continue to Checkout
           </button>
@@ -395,20 +357,20 @@ export default function Pricing() {
         <h4 className='text-xl font-medium text-white mb-6 text-center'>Frequently Asked Questions</h4>
         <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
           <FAQItem
-            question="Can I mix free and paid plans?"
-            answer="Yes! You can select a free plan for one product and a paid plan for another. For example, use WebChat free with WhatsApp Pro."
+            question='Can I switch plans later?'
+            answer='Yes! You can upgrade or downgrade your plan at any time. Changes are prorated.'
           />
           <FAQItem
-            question="Can I upgrade or downgrade later?"
-            answer="Absolutely. You can change your plan for any product at any time. Changes are prorated."
+            question='Do you offer yearly billing?'
+            answer='Yes, we offer 20% discount for annual billing on all plans. Contact us for details.'
           />
           <FAQItem
-            question="Do you offer discounts for yearly billing?"
-            answer="Yes, we offer 20% discount for annual billing on all paid plans. Contact us for enterprise discounts."
+            question='Is there a setup fee?'
+            answer='No setup fees. You only pay for the plan you select on a monthly basis.'
           />
           <FAQItem
-            question="Is there a setup fee?"
-            answer="No setup fees. You only pay for the plans you select on a monthly basis."
+            question='Can I try before buying?'
+            answer='Yes! We offer a 14-day free trial on all plans. No credit card required.'
           />
         </div>
       </div>

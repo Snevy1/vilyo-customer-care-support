@@ -173,10 +173,10 @@ const Sidebar = () => {
 
       {/* Collapsed overlay for main content */}
       {!isMobile && !isCollapsed && (
-        <div className="hidden md:block w-64 flex-shrink-0" />
+        <div className="hidden md:block w-64 shrink-0" />
       )}
       {!isMobile && isCollapsed && (
-        <div className="hidden md:block w-20 flex-shrink-0" />
+        <div className="hidden md:block w-20 shrink-0" />
       )}
     </>
   );

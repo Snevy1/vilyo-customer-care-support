@@ -313,8 +313,7 @@ export const whatsAppSubscription = pgTable("whatsAppSubscription", {
     .primaryKey()
     .default(sql`gen_random_uuid()`),
   tenant_id: text("tenant_id")
-    .notNull()
-    .references(() => whatsAppTenant.id, { onDelete: "cascade" }),
+  .references(() => whatsAppTenant.id, { onDelete: "cascade" }),
   organization_id: text("organization_id").notNull(),
   status: text("status").notNull(), // 'active', 'past_due', 'cancelled'
   plan_id: text("plan_id").notNull(), // Paystack plan_code for WhatsApp
@@ -350,6 +349,39 @@ export const whatsAppSubscription = pgTable("whatsAppSubscription", {
   };
 });
 
+
+export const fullSubscription = pgTable("fullSubscription", {
+  id: text("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  tenant_id: text("tenant_id"), 
+  organization_id: text("organization_id").notNull(),
+  status: text("status").notNull(), 
+  plan_id: text("plan_id").notNull(), 
+  subscription_id: text("subscription_id"),
+  plan_tier: text("plan_tier"), 
+  provider: text("provider"), 
+  paystack_subscription_id: text("paystack_subscription_id"),
+  payment_method: text('payment_method'), 
+current_period_start: timestamp("current_period_start", { withTimezone: true }).default(sql`now()`),
+  current_period_end: timestamp("current_period_end", { withTimezone: true }).notNull(),
+  created_at: timestamp("created_at", { withTimezone: true }).default(sql`now()`),
+  updated_at: timestamp("updated_at", { withTimezone: true }).default(sql`now()`),
+  cancelled_at: timestamp("cancelled_at", { withTimezone: true }), // Removed default now() so it's null until cancelled
+},
+(table) => {
+  return {
+    // Unique names for indexes in this table
+    fullTenantIdx: index("full_sub_tenant_idx").on(table.tenant_id),
+    fullOrgIdx: index("full_sub_org_idx").on(table.organization_id),
+    fullStatusIdx: index("full_sub_status_idx").on(table.status),
+    fullPeriodEndIdx: index("full_sub_period_end_idx").on(table.current_period_end),
+    fullStatusPeriodIdx: index("full_sub_status_period_idx").on(
+      table.status,
+      table.current_period_end
+    ),
+  };
+});
 
 
 
@@ -629,7 +661,8 @@ export const paymentProcessor = pgTable(
     logo_url: text("logo_url"),
 
     is_enabled: boolean("is_enabled").notNull().default(false),
-
+    priority: integer("priority").notNull().default(0),
+   is_top_priority: boolean("is_top_priority").notNull().default(false),
     supported_currencies: jsonb("supported_currencies")
       .$type<string[]>()
       .notNull()
@@ -691,7 +724,7 @@ export const paymentProcessor = pgTable(
 );
 
 
-// Plans
+// Plans, though these plans are still available as schemas, we want to unify the subscription plans, we will see if we will delete this architecture or remain with it, the currently used one is below
 
 export const whatsAppPlans = pgTable("whatsapp_plans", {
   id: text("id")
@@ -802,5 +835,44 @@ export const webchatPlans = pgTable("webchat_plans", {
     sortOrderIdx: index("webchat_plans_sort_order_idx").on(table.sort_order),
     priceIdx: index("webchat_plans_price_idx").on(table.price),
   };
+});
+
+
+// currently used schema
+
+
+export const subscriptionPlans = pgTable("subscription_plans", {
+  id: text("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // PayPal/Stripe Specifics
+  productId: text("product_id"), // The PayPal PROD-XXX ID
+  externalPlanId: text("external_plan_id").unique().notNull(), // The P-XXX (PayPal) or price_XXX (Stripe)
+  provider: text("provider").notNull().default('paypal'), // 'paypal' or 'stripe'
+  
+  // Plan details
+  name: text("name").notNull(),
+  slug: text("slug").unique().notNull(), // e.g., 'webchat-plus-whatsapp'
+  description: text("description"),
+  
+  // Pricing
+  price: integer("price").notNull(), // in cents (2900 = $29.00)
+  currency: text("currency").notNull().default('USD'),
+  interval: text("interval").notNull().default('month'),
+  
+  // Features & Limits (Unified)
+  features: jsonb("features").notNull().default([]),
+  limits: jsonb("limits").notNull().default({
+    max_chats: 1000,
+    max_agents: 1,
+    whatsapp_enabled: false,
+    webchat_enabled: true
+  }),
+
+  // Status
+  isActive: boolean("is_active").default(true),
+  sortOrder: integer("sort_order").default(0),
+
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 

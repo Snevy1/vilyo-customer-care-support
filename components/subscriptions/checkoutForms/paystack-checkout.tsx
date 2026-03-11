@@ -43,7 +43,7 @@ export const PaystackCheckoutForm: React.FC<PaystackCheckoutFormProps> = ({
           paymentProvider: 'paystack',
           planId: plan.providerPlanId,
           tenantId,
-          callbackUrl: `${window.location.origin}/dashboard/subscriptions?provider=paystack`,
+          callbackUrl: `${window.location.origin}/dashboard/finance/subscriptions?provider=paystack`,
         }
       )
       

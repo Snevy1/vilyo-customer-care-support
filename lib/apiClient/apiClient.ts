@@ -136,9 +136,9 @@ export const authApi = {
 
 export const paymentProcessorsApi = {
     PaymentProcessors: () => 
-    apiClient.get<{processors: PaymentProcessor[]}>('/api/payment-processors').then(res => res.data),
+    apiClient.get<{processors: PaymentProcessor[]}>('/api/subscriptions/payment-processors').then(res => res.data),
     StripeKey: () =>
-    apiClient.get<{ publishableKey: string }>('/api/payment-processors/stripe/key').then(res => res.data),
+    apiClient.get<{ publishableKey: string }>('/api/subscriptions/payment-processors/stripe/key').then(res => res.data),
     PaypalClientId: () =>
-    apiClient.get<{ clientId: string }>('/api/payment-processors/paypal/client-id').then(res => res.data),
+    apiClient.get<{ clientId: string }>('/api/subscriptions/payment-processors/paypal/client-id').then(res => res.data),
 };

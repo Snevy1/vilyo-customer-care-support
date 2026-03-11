@@ -302,6 +302,8 @@ interface PricingCardProps {
   onSelect: () => void;
   highlightColor?: string;
   showSavings?: number;
+  icon?: React.ReactNode;
+  isPopular?: boolean;
 }
 
 
@@ -319,7 +321,7 @@ interface ProductSectionProps {
 
 
 interface Plan {
-  id: string;
+  id?: string;
   plan_id: string;
   name: string;
   display_name: string;
