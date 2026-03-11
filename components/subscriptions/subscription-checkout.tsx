@@ -50,6 +50,7 @@ export interface PaymentProcessor {
   logo_url?: string | null;
   priority?: number;
   is_top_priority?: boolean;
+  supportedCurrencies?: string[]
 }
 
 

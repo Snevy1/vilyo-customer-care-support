@@ -158,7 +158,7 @@ const ViewPaymentProcessor = () => {
                 >
                   <CardContent className="p-4 flex items-center gap-4">
                     <img
-                      src={processor.logoUrl}
+                      src={processor?.logoUrl}
                       alt={`${processor.name} Logo`}
                       className="h-12 w-12 object-contain rounded"
                     />
@@ -179,7 +179,7 @@ const ViewPaymentProcessor = () => {
         {selectedProcessor && (
           <div className="flex-1 p-6 flex flex-col items-center">
             <img
-              src={previewUrl || selectedProcessor.logoUrl}
+              src={previewUrl || selectedProcessor?.logoUrl}
               alt={`${selectedProcessor.name} Logo`}
               className="h-20 object-contain mb-6 rounded shadow-sm"
             />

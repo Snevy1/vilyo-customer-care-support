@@ -55,8 +55,8 @@ export const ProviderSelection: React.FC<ProviderSelectionProps> = ({
               {/* Logo */}
               <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-lg bg-white p-2 shadow-sm">
                 <img
-                  src={processor.logoUrl}
-                  alt={processor.displayName}
+                  src={processor?.logo_url || ''}
+                  alt={processor.display_name}
                   className="h-full w-full object-contain text-zinc-700"
                   onError={(e) => {
                     // Fallback for broken images
@@ -67,7 +67,7 @@ export const ProviderSelection: React.FC<ProviderSelectionProps> = ({
 
               {/* Name */}
               <h3 className="mb-2 text-center font-semibold text-gray-900">
-                {processor.displayName}
+                {processor?.display_name}
               </h3>
 
               {/* Currencies */}
@@ -91,7 +91,7 @@ export const ProviderSelection: React.FC<ProviderSelectionProps> = ({
       {/* Helper Text */}
       {selectedProvider && (
         <p className="text-center text-sm text-gray-600">
-          Continue with <strong>{selectedProvider.displayName}</strong> to complete your subscription
+          Continue with <strong>{selectedProvider?.display_name}</strong> to complete your subscription
         </p>
       )}
     </div>
