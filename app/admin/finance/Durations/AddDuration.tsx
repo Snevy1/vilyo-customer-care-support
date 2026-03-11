@@ -39,13 +39,13 @@ const AddDuration = ({ visible, onClose }: AddDurationProps) => {
   // const [createDuration] = useCreateDurationMutation();
   // const [addNotification] = useAddAdminNotificationMutation();
 
-  const getAuthState = (): any | null => {
+  /* const getAuthState = (): any | null => {
     const authStateString = localStorage.getItem("authState");
     return authStateString ? JSON.parse(authStateString) : null;
   };
 
   const authState = getAuthState();
-  const user = authState?.user;
+  const user = authState?.user; */
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};

@@ -46,13 +46,13 @@ const EditDuration = ({ data, onClose }: EditDurationProps) => {
   // const [updateDuration] = useUpdateDurationMutation();
   // const [addNotification] = useAddAdminNotificationMutation();
 
-  const getAuthState = (): any | null => {
+  /* const getAuthState = (): any | null => {
     const authStateString = localStorage.getItem("authState");
     return authStateString ? JSON.parse(authStateString) : null;
   };
 
   const authState = getAuthState();
-  const user = authState?.user;
+  const user = authState?.user; */
 
   // Set form values when the component mounts
   useEffect(() => {
